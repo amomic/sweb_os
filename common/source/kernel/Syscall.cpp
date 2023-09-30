@@ -51,8 +51,11 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
     case sc_pseudols:
       pseudols((const char*) arg1, (char*) arg2, arg3);
       break;
-      case sc_pthread_create:
+    case sc_pthread_create:
           return_value =pthread_create(arg1, arg2, reinterpret_cast<void *(*)(void *)>(arg3), arg4, arg5);
+      break;
+      case sc_pthread_exit:
+          pthread_exit(reinterpret_cast<void *>(arg1));
           break;
     default:
       return_value = -1;
@@ -206,4 +209,8 @@ size_t Syscall::pthread_create(pointer thread, pointer attr, void *(start_routin
     }
 
     return  0;
+}
+
+void Syscall::pthread_exit([[maybe_unused]]void *value) {
+    currentThread -> kill();
 }

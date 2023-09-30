@@ -1,4 +1,6 @@
 #include "pthread.h"
+#include "syscall.h"
+#include "../../../common/include/kernel/syscall-definitions.h"
 
 /**
  * function stub
@@ -7,7 +9,12 @@
 int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
                    void *(*start_routine)(void *), void *arg)
 {
-  return -1;
+    return (int)__syscall(sc_pthread_create, (size_t)thread, (size_t)attr, (size_t)start_routine, (size_t)arg, (size_t)wrapper_function);
+}
+
+void wrapper_function(void* (*start_routine)(void*), void* arg)
+{
+    pthread_exit(start_routine(arg));
 }
 
 /**
@@ -25,6 +32,8 @@ int pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr)
  */
 void pthread_exit(void *value_ptr)
 {
+
+    __syscall(sc_pthread_exit, (size_t)value_ptr, 0, 0, 0, 0);
 }
 
 /**

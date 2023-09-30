@@ -17,4 +17,5 @@
 #define sc_createprocess 191
 #define sc_trace 252
 #define sc_pthread_create 300
+#define sc_pthread_exit 502
 
