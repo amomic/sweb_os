@@ -197,11 +197,7 @@ size_t Syscall::pthread_create(pointer thread, pointer attr, void *(start_routin
     }
 
     UserThread* currThread = (UserThread*) currentThread;
-    size_t ret = reinterpret_cast<size_t>(currThread->getProcess()->createThread(reinterpret_cast<size_t *>(thread),
-                                                                                 reinterpret_cast<size_t *>(attr),
-                                                                                 start_routine,
-                                                                                 reinterpret_cast<void *>(wrapper), arg,
-                                                                                 0));
+    size_t ret = reinterpret_cast<size_t>(currThread->getProcess()->createThread(reinterpret_cast<size_t *>(thread),reinterpret_cast<size_t *>(attr),start_routine,reinterpret_cast<void *>(wrapper), arg,0));
 
     if(!ret)
     {
@@ -212,5 +208,8 @@ size_t Syscall::pthread_create(pointer thread, pointer attr, void *(start_routin
 }
 
 void Syscall::pthread_exit([[maybe_unused]]void *value) {
-    currentThread -> kill();
+
+    //to update (freeing resources, joining etc)
+    UserThread* currThread = (UserThread*) currentThread;
+    currThread -> kill();
 }
