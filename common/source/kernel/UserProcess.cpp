@@ -28,7 +28,9 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
         return;
     }
 
-    Thread *user_thread = new UserThread(filename,fs_info,terminal_number, this, NULL, loader_->getEntryFunction(), 0, 0, NULL);
+    UserThread *user_thread = new UserThread(filename,fs_info,terminal_number, this, NULL, loader_->getEntryFunction(), 0, 0, NULL);
+
+    assert(user_thread && "thread creation failed\n");
     pid_ = ProcessRegistry::instance()->processCount();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(0,user_thread));
@@ -59,6 +61,9 @@ void UserProcess::Run()
 UserThread* UserProcess::createThread(size_t* thread, size_t *attr, void*(*start_routine)(void*), void *wrapper,uint64 argc,size_t args)
 {
     debug(USERPROCESS, "New thread creation\n");
+    if(!start_routine){
+        wrapper = loader_->getEntryFunction();
+    }
     threads_counter_for_id_++;
     *thread = threads_counter_for_id_;
     *attr = NULL;

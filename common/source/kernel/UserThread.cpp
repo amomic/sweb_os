@@ -1,4 +1,3 @@
-#include "UserThread.h"
 #include "Thread.h"
 #include "Syscall.h"
 #include "PageManager.h"
@@ -7,6 +6,10 @@
 #include "ArchThreads.h"
 #include "Console.h"
 #include "../../include/ustl/ustring.h"
+#include "../../include/kernel/UserThread.h"
+#include "../../include/fs/FileSystemInfo.h"
+#include "../../include/mm/PageManager.h"
+#include "../../../arch/x86/64/include/ArchThreads.h"
 
 //constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
