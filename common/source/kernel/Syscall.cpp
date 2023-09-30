@@ -7,6 +7,8 @@
 #include "ProcessRegistry.h"
 #include "File.h"
 #include "Scheduler.h"
+#include "UserThread.h"
+#include "UserProcess.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
 {
@@ -49,6 +51,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
     case sc_pseudols:
       pseudols((const char*) arg1, (char*) arg2, arg3);
       break;
+      case sc_pthread_create:
+          return_value =pthread_create(arg1, arg2, reinterpret_cast<void *(*)(void *)>(arg3), arg4, arg5);
+          break;
     default:
       return_value = -1;
       kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -181,3 +186,24 @@ void Syscall::trace()
   currentThread->printBacktrace();
 }
 
+size_t Syscall::pthread_create(pointer thread, pointer attr, void *(start_routine)(void*), pointer arg, pointer wrapper)
+{
+    if(thread == NULL || start_routine == nullptr)
+    {
+        return -1;
+    }
+
+    UserThread* currThread = (UserThread*) currentThread;
+    size_t ret = reinterpret_cast<size_t>(currThread->getProcess()->createThread(reinterpret_cast<size_t *>(thread),
+                                                                                 reinterpret_cast<size_t *>(attr),
+                                                                                 start_routine,
+                                                                                 reinterpret_cast<void *>(wrapper), arg,
+                                                                                 0));
+
+    if(!ret)
+    {
+        return -1;
+    }
+
+    return  0;
+}

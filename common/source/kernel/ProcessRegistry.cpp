@@ -103,11 +103,17 @@ size_t ProcessRegistry::processCount()
   return progs_running_;
 }
 
+
 void ProcessRegistry::createProcess(const char* path)
 {
-  debug(PROCESS_REG, "create process %s\n", path);
-  Thread* process = new UserProcess(path, new FileSystemInfo(*working_dir_));
-  debug(PROCESS_REG, "created userprocess %s\n", path);
-  Scheduler::instance()->addNewThread(process);
-  debug(PROCESS_REG, "added thread %s\n", path);
+    debug(PROCESS_REG, "create process %s\n", path);
+    UserProcess* process = new UserProcess(path, new FileSystemInfo(*working_dir_));
+    if(!process)
+    {
+        debug(PROCESS_REG,"failed to create process\n");
+    }
+    else
+        debug(PROCESS_REG, "create process %s\n", path);
+
+
 }
