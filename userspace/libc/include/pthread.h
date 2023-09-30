@@ -26,7 +26,7 @@ extern int pthread_create(pthread_t *thread,
          void *arg);
 
 extern void pthread_exit(void *value_ptr);
-
+extern void wrapper_function(void* (*start_routine)(void*), void* arg);
 extern int pthread_cancel(pthread_t thread);
 
 extern int pthread_join(pthread_t thread, void **value_ptr);
