@@ -26,8 +26,11 @@ public:
     size_t threads_counter_for_id_ = 0;
     UserProcess* process_;
     ustl::map<size_t, Thread *> threads_map_;
+    Mutex threads_lock_;
+    Mutex pages_lock_;
 
 
+    size_t virtual_pages_;
 private:
     int32 fd_;
     FileSystemInfo *working_dir_;
@@ -36,5 +39,6 @@ private:
     uint32 terminal_number_;
     size_t tid_;
     size_t pid_;
+
 };
 

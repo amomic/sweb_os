@@ -15,12 +15,15 @@ public:
         void Run();
         UserProcess *getProcess();
         UserProcess* process_;
+        static const size_t STACK_PAGES = 15;
+        size_t tid_;
 
 
 private:
         ustl::string filename_;
         FileSystemInfo *fs_info_;
         uint32 terminal_number_;
-        size_t tid_;
+        size_t virtual_pages_;
+
 
 };

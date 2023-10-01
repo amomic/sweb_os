@@ -16,15 +16,23 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
                        void *(*start_routine)(void *), void *wrapper, size_t tid, void *argc, size_t args) :
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(userProcess),
-        terminal_number_(terminal_number),
-        tid_(tid)
+        tid_(tid),
+        terminal_number_(terminal_number)
 {
     loader_ = process_->loader_;
-    size_t page_for_stack = PageManager::instance()->allocPPN();
-    bool vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, page_for_stack, 1);
+    size_t stack_ppn= PageManager::instance()->allocPPN();
+    debug(USERPROCESS, "ok1");
+    process_->pages_lock_.acquire();
+    virtual_pages_+= STACK_PAGES + 1;
+    size_t stack_vpn = USER_BREAK / PAGE_SIZE - virtual_pages_;
+    //debug(USERPROCESS, "%10zx: adresa\n",((USER_BREAK / PAGE_SIZE - 1) - (id*(8+1) )));
+    bool vpn_mapped = loader_->arch_memory_.mapPage(stack_vpn, stack_ppn , 1);
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
+    debug(USERPROCESS, "ok2");
+    process_->pages_lock_.release();
+    size_t stack_start = (stack_vpn << 12 | 0xfff) - sizeof(pointer);
     ArchThreads::createUserRegisters(user_registers_, wrapper,
-                                     (void*) (USER_BREAK - sizeof(pointer)),
+                                     (void*) stack_start,
                                      getKernelStackStartPointer());
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
