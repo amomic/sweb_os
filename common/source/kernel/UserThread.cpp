@@ -26,7 +26,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     virtual_pages_+= STACK_PAGES + 1;
     size_t stack_vpn = USER_BREAK / PAGE_SIZE - virtual_pages_;
     //debug(USERPROCESS, "%10zx: adresa\n",((USER_BREAK / PAGE_SIZE - 1) - (id*(8+1) )));
-    bool vpn_mapped = loader_->arch_memory_.mapPage(stack_vpn, stack_ppn , 1);
+    bool vpn_mapped = loader_->arch_memory_.mapPage((USER_BREAK / PAGE_SIZE - 1) , stack_ppn , 1);
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERPROCESS, "ok2");
     process_->pages_lock_.release();
