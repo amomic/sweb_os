@@ -65,7 +65,7 @@ UserThread* UserProcess::createThread(size_t* thread, size_t *attr, void*(*start
 {
     debug(USERPROCESS, "New thread creation\n");
 
-    threads_lock_.acquire();
+    //threads_lock_.acquire();
 
     if(!start_routine){
         wrapper = loader_->getEntryFunction();
@@ -90,12 +90,10 @@ UserThread* UserProcess::createThread(size_t* thread, size_t *attr, void*(*start
     {
         debug(USERPROCESS, "New thread creation ERROR\n");
     }
-    threads_lock_.release();
+   // threads_lock_.release();
 
     Scheduler::instance()->addNewThread(new_thread);
     threads_map_.push_back(ustl::make_pair(threads_counter_for_id_,new_thread));
-
-
 
     return (UserThread*)new_thread;
 
