@@ -19,15 +19,30 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         tid_(tid),
         terminal_number_(terminal_number)
 {
-    loader_ = process_->loader_;
+    loader_ = userProcess->getLoader();
     size_t stack_ppn= PageManager::instance()->allocPPN();
-    debug(USERPROCESS, "ok1");
+
+    this->setTID(tid);
+
+    debug(USERPROCESS, "Thread ID is: %lu \n", tid);
+
+    debug(USERPROCESS, "Before VPN_MAPPED\n");
     //virtual_pages_+= STACK_PAGES + 1;
     //size_t stack_vpn = loader_->arch_memory_.getIdentAddressOfPPN(stack_ppn,4096);
     //debug(USERPROCESS, "%10zx: adresa\n",((USER_BREAK / PAGE_SIZE - 1) - (id*(8+1) )));
-    bool vpn_mapped = loader_->arch_memory_.mapPage((USER_BREAK / PAGE_SIZE - 1), stack_ppn , 1);
+    bool vpn_mapped = -1;
+
+    if(tid == 0)
+    {
+        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, stack_ppn , 1);
+    }
+    else
+    {
+        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid + 2) - 1, stack_ppn , 1);
+    }
+
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
-    debug(USERPROCESS, "ok2");
+    debug(USERPROCESS, "After VPN_MAPPED\n");
     //size_t stack_start = (stack_vpn << 12 | 0xfff) - sizeof(pointer);
     ArchThreads::createUserRegisters(user_registers_, wrapper,
                                      (void*) (USER_BREAK - sizeof(pointer)),

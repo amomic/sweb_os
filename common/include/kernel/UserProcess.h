@@ -31,6 +31,8 @@ public:
 
 
     size_t virtual_pages_;
+
+    Loader* getLoader();
 private:
     int32 fd_;
     FileSystemInfo *working_dir_;
