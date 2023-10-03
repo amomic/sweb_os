@@ -78,6 +78,8 @@ class Thread
      * @return true if ready for scheduling
      */
     bool schedulable();
+
+    void setTID(size_t tid);
   
   
     uint32 kernel_stack_[2048];

@@ -61,6 +61,11 @@ void UserProcess::Run()
     assert(false);
 }
 
+Loader* UserProcess::getLoader()
+{
+    return loader_;
+}
+
 UserThread* UserProcess::createThread(size_t* thread, size_t *attr, void*(*start_routine)(void*), void *wrapper,uint64 argc,size_t args)
 {
     debug(USERPROCESS, "New thread creation\n");
@@ -71,15 +76,15 @@ UserThread* UserProcess::createThread(size_t* thread, size_t *attr, void*(*start
         wrapper = loader_->getEntryFunction();
     }
     threads_counter_for_id_++;
-    debug(USERPROCESS, "New thread creation1\n");
+    //debug(USERPROCESS, "New thread creation1\n");
     *thread = threads_counter_for_id_;
-    debug(USERPROCESS, "New thread creation2\n");
+    //debug(USERPROCESS, "New thread creation2\n");
     process_ = this;
     if(!attr)
     {
         attr = NULL;
     }
-    debug(USERPROCESS, "New thread creation3\n");
+    debug(USERPROCESS, "Calling UserThread constructor!\n");
     Thread *new_thread = new UserThread(filename_, fs_info_, terminal_number_, process_, start_routine, wrapper,
                                         threads_counter_for_id_, (void*)argc, args);
     if(new_thread)

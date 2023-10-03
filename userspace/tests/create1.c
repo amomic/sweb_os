@@ -9,22 +9,24 @@ static void * thread_start(void *arg)
 {
     printf("%s - ", (char *) arg);
     printf("I'm here\n");
-    return (void*)-1;
+    return NULL;
 }
 
 
 int main(int argc, char *argv[])
 {
 
-    //pthread_t something;
-    int return_value;
+    printf("--------------------------------------\n"
+           "Testing\n");
 
-
-    for(int i = 0; i < 200; i++)
+    int number_of_threads = 5;
+    pthread_t new_thread[number_of_threads];
+    int return_value = -1;
+    for(int cnt = 0; cnt < number_of_threads; cnt++)
     {
-        return_value = pthread_create(&thread[i], NULL, &thread_start, "Hi!");
-        assert(!return_value);
+        return_value = pthread_create(&new_thread[cnt], NULL,
+                                      &thread_start, NULL);
+        assert(return_value == 0);
+        printf("    pthread_create for %d successful!\n", cnt);
     }
-
-    return 0;
 }
