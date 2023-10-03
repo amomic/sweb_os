@@ -5,10 +5,10 @@
 pthread_t thread[10];
 
 
-static void * thread_start(void *arg)
+void* thread_start(void *arg)
 {
-    printf("%s - ", (char *) arg);
-    printf("I'm here\n");
+
+    printf("Hello world!\n");
     return NULL;
 }
 
@@ -29,4 +29,6 @@ int main(int argc, char *argv[])
         assert(return_value == 0);
         printf("    pthread_create for %d successful!\n", cnt);
     }
+
+    return 0;
 }

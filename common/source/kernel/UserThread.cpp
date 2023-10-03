@@ -5,11 +5,9 @@
 #include "UserProcess.h"
 #include "ArchThreads.h"
 #include "Console.h"
-#include "../../include/ustl/ustring.h"
-#include "../../include/kernel/UserThread.h"
-#include "../../include/fs/FileSystemInfo.h"
-#include "../../include/mm/PageManager.h"
-#include "../../../arch/x86/64/include/ArchThreads.h"
+#include "ustring.h"
+#include "UserThread.h"
+#include "FileSystemInfo.h"
 
 //constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
@@ -27,10 +25,9 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     debug(USERPROCESS, "Thread ID is: %lu \n", tid);
 
     debug(USERPROCESS, "Before VPN_MAPPED\n");
-    //virtual_pages_+= STACK_PAGES + 1;
-    //size_t stack_vpn = loader_->arch_memory_.getIdentAddressOfPPN(stack_ppn,4096);
-    //debug(USERPROCESS, "%10zx: adresa\n",((USER_BREAK / PAGE_SIZE - 1) - (id*(8+1) )));
+
     bool vpn_mapped = -1;
+
 
     if(tid == 0)
     {
@@ -43,7 +40,6 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERPROCESS, "After VPN_MAPPED\n");
-    //size_t stack_start = (stack_vpn << 12 | 0xfff) - sizeof(pointer);
     ArchThreads::createUserRegisters(user_registers_, wrapper,
                                      (void*) (USER_BREAK - sizeof(pointer)),
                                      getKernelStackStartPointer());

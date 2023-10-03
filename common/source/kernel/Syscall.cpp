@@ -73,11 +73,9 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size)
   VfsSyscall::readdir(pathname, buffer, size);
 }
 
-void Syscall::exit(size_t exit_code)
+void Syscall::exit([[maybe_unused]]size_t exit_code)
 {
-  debug(SYSCALL, "Syscall::EXIT: called, exit_code: %zd\n", exit_code);
-  currentThread->kill();
-  assert(false && "This should never happen");
+    pthread_exit((void*)-1);
 }
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size)
