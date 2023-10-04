@@ -30,5 +30,10 @@ int main(int argc, char *argv[])
         printf("    pthread_create for %d successful!\n", cnt);
     }
 
+    /*for(int cnt = 0; cnt < 1000; cnt++)
+    {
+        printf("Hello\n");
+    }*/
+
     return 0;
 }

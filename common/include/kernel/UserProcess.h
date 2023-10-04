@@ -31,8 +31,12 @@ public:
 
 
     size_t virtual_pages_;
+    ustl::atomic<size_t> threads_alive_;
 
     Loader* getLoader();
+
+    void unmapPage();
+
 private:
     int32 fd_;
     FileSystemInfo *working_dir_;
@@ -41,6 +45,7 @@ private:
     uint32 terminal_number_;
     size_t tid_;
     size_t pid_;
+
 
 };
 

@@ -37,6 +37,7 @@ class ProcessRegistry : public Thread
 
     static ProcessRegistry* instance();
     void createProcess(const char* path);
+
 private:
 
     char const **progs_;
