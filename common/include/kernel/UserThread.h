@@ -12,6 +12,7 @@ public:
         //copy constructor
         //UserThread([[maybe_unused]]const UserThread &process_thread_pointer, UserProcess *parent_process,
         //  uint32 terminal_number, ustl::string filename, FileSystemInfo *fs_info, size_t thread_id);
+        ~UserThread();
         void Run();
         UserProcess *getProcess();
         UserProcess* process_;

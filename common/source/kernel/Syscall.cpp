@@ -9,6 +9,7 @@
 #include "Scheduler.h"
 #include "UserThread.h"
 #include "UserProcess.h"
+#include "ArchMemory.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
 {
@@ -195,7 +196,7 @@ size_t Syscall::pthread_create(pointer thread, pointer attr, void *(start_routin
     }
 
     UserThread* currThread = (UserThread*) currentThread;
-    size_t ret = reinterpret_cast<size_t>(currThread->getProcess()->createThread(reinterpret_cast<size_t *>(thread),reinterpret_cast<size_t *>(attr),start_routine,reinterpret_cast<void *>(wrapper), arg,0));
+    size_t ret = (size_t)(currThread->getProcess()->createThread(reinterpret_cast<size_t *>(thread),reinterpret_cast<size_t *>(attr),start_routine,reinterpret_cast<void *>(wrapper), arg,0));
 
     if(!ret)
     {
@@ -209,5 +210,6 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
 
     //to update (freeing resources, joining etc)
     UserThread* currThread = (UserThread*) currentThread;
+    //currThread->process_->unmapPage();
     currThread -> kill();
 }

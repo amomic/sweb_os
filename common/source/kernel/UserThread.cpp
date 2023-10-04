@@ -8,10 +8,11 @@
 #include "ustring.h"
 #include "UserThread.h"
 #include "FileSystemInfo.h"
+#include "Scheduler.h"
 
 //constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
-                       void *(*start_routine)(void *), void *wrapper, size_t tid, void *argc, size_t args) :
+                       [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid, [[maybe_unused]]void *argc, [[maybe_unused]]size_t args) :
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(userProcess),
         tid_(tid),
@@ -22,9 +23,9 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     this->setTID(tid);
 
-    debug(USERPROCESS, "Thread ID is: %lu \n", tid);
+    debug(USERTHREAD, "Thread ID is: %lu \n", tid);
 
-    debug(USERPROCESS, "Before VPN_MAPPED\n");
+    debug(USERTHREAD, "Before VPN_MAPPED\n");
 
     bool vpn_mapped = -1;
 
@@ -32,26 +33,28 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     if(tid == 0)
     {
         vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, stack_ppn , 1);
+        virtual_pages_ = USER_BREAK / PAGE_SIZE - 1;
     }
     else
     {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid + 2) - 1, stack_ppn , 1);
+        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1, stack_ppn , 1);
+        virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1;
     }
 
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
-    debug(USERPROCESS, "After VPN_MAPPED\n");
+    debug(USERTHREAD, "After VPN_MAPPED\n");
     ArchThreads::createUserRegisters(user_registers_, wrapper,
-                                     (void*) (USER_BREAK - sizeof(pointer)),
+                                     (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid*PAGE_SIZE),
                                      getKernelStackStartPointer());
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
 
 
-    if(!start_routine)
+    /*if(!start_routine)
     {
         user_registers_->rdi = reinterpret_cast<uint64>(argc);
         user_registers_->rsi = reinterpret_cast<uint64>(args);
-    }
+    }*/
 
     if(start_routine)
     {
@@ -75,6 +78,20 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
                        tid_(thread_id){
 
 }*/
+
+UserThread::~UserThread()
+{
+    debug(USERTHREAD, "DESTRUCTOR: UserThread %zu in UserProcess %s\n", tid_, filename_.c_str());
+
+    assert(Scheduler::instance()->isCurrentlyCleaningUp());
+
+    if(!(process_->threads_alive_.sub_fetch(1)))
+    {
+        debug(USERTHREAD, "UserProcess %s destroyed, no threads left\n", filename_.c_str());
+        delete process_;
+    }
+
+}
 
 void UserThread::Run()
 {

@@ -104,16 +104,10 @@ size_t ProcessRegistry::processCount()
 }
 
 
-void ProcessRegistry::createProcess(const char* path)
-{
+void ProcessRegistry::createProcess(const char* path) {
     debug(PROCESS_REG, "create process %s\n", path);
-    UserProcess* process = new UserProcess(path, new FileSystemInfo(*working_dir_));
-    if(!process)
-    {
-        debug(PROCESS_REG,"failed to create process\n");
-    }
-    else
+    UserProcess *process = new UserProcess(path, new FileSystemInfo(*working_dir_));
+    if (process) {
         debug(PROCESS_REG, "create process %s\n", path);
-
-
+    }
 }

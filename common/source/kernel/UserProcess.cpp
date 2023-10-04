@@ -83,7 +83,17 @@ UserThread* UserProcess::createThread(size_t* thread, [[maybe_unused]]size_t *at
 
     Scheduler::instance()->addNewThread(new_thread);
     threads_map_.push_back(ustl::make_pair(threads_counter_for_id_,new_thread));
+    threads_alive_.fetch_add(1);
     threads_lock_.release();
     return (UserThread*)new_thread;
 
+}
+
+
+void UserProcess::unmapPage()
+{
+    if( loader_->arch_memory_.checkAddressValid(virtual_pages_*PAGE_SIZE))
+    {
+        loader_->arch_memory_.unmapPage(virtual_pages_);
+    }
 }
