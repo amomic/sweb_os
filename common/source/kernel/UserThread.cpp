@@ -82,14 +82,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 UserThread::~UserThread()
 {
     debug(USERTHREAD, "DESTRUCTOR: UserThread %zu in UserProcess %s\n", tid_, filename_.c_str());
-
-    assert(Scheduler::instance()->isCurrentlyCleaningUp());
-
-    if(!(process_->threads_alive_.sub_fetch(1)))
-    {
-        debug(USERTHREAD, "UserProcess %s destroyed, no threads left\n", filename_.c_str());
-        delete process_;
-    }
+    process_->CleanThreads(tid_);
 
 }
 

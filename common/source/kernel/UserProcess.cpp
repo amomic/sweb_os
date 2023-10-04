@@ -14,7 +14,8 @@
 
 UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number) :
         threads_lock_("UserProcess::threads_lock_"), pages_lock_("UserProcess::pages_lock_"),
-        fd_(VfsSyscall::open(filename, O_RDONLY)), filename_(filename),fs_info_(fs_info), terminal_number_(terminal_number)
+        threads_alive_(0), fd_(VfsSyscall::open(filename, O_RDONLY)),filename_(filename), fs_info_(fs_info),
+        terminal_number_(terminal_number)
 {
     ProcessRegistry::instance()->processStart(); //should also be called if you fork a process
 
@@ -32,8 +33,11 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
     UserThread *user_thread = new UserThread(filename,fs_info,terminal_number, this, NULL, loader_->getEntryFunction(), 0, 0, NULL);
 
     assert(user_thread && "thread creation failed\n");
+    threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(0,user_thread));
+    threads_alive_++;
+    threads_lock_.release();
 
 
 }
@@ -49,7 +53,6 @@ UserProcess::~UserProcess()
 
     delete working_dir_;
     working_dir_ = 0;
-
     ProcessRegistry::instance()->processExit();
 }
 
@@ -82,18 +85,22 @@ UserThread* UserProcess::createThread(size_t* thread, [[maybe_unused]]size_t *at
     assert(new_thread && "Failed to create new thread\n");
 
     Scheduler::instance()->addNewThread(new_thread);
+    threads_alive_++;
     threads_map_.push_back(ustl::make_pair(threads_counter_for_id_,new_thread));
-    threads_alive_.fetch_add(1);
     threads_lock_.release();
     return (UserThread*)new_thread;
 
 }
 
 
-void UserProcess::unmapPage()
+void UserProcess::CleanThreads(size_t thread)
 {
-    if( loader_->arch_memory_.checkAddressValid(virtual_pages_*PAGE_SIZE))
+    assert(Scheduler::instance()->isCurrentlyCleaningUp());
+    threads_alive_--;
+    if(threads_alive_ == 0)
     {
-        loader_->arch_memory_.unmapPage(virtual_pages_);
+        debug(USERTHREAD, "no threads left\n");
+        threads_map_.erase(thread);
+        delete this;
     }
 }
