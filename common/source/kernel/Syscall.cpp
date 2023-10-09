@@ -216,3 +216,36 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     //currThread->process_->unmapPage();
     currThread -> kill();
 }
+
+size_t Syscall::pthread_cancel(size_t thread_id) {
+    debug(SYSCALL, "Syscall::pthread_cancel is being called with the following arguments: %zu \n", thread_id);
+    // Get Current User Process by casting current user thread into our custom user thread object and calling getProcess() on the object
+    UserProcess* currentUserProcess = reinterpret_cast<UserThread*>(currentThread)->getProcess();
+
+    //Lock The thread table
+    currentUserProcess->threads_lock_.acquire();
+    // get our thread from the thread table/map
+    auto thread_map_entry = currentUserProcess->threads_map_.find(thread_id);
+    if (thread_map_entry != currentUserProcess->threads_map_.end())
+    {
+        // get the thread from table with iterator
+        debug(SYSCALL, "Syscall::pthread_cancel: now here %zu \n", thread_id);
+
+        //optional: log
+
+        //cancle thread ??
+
+        // unlock threads map, ret success -> (0)
+        currentUserProcess->threads_lock_.release();
+        return 0;
+    }
+
+    // unlock threads map
+    currentUserProcess->threads_lock_.release();
+    // retrun if not found
+    debug(SYSCALL, "Syscall::pthread_cancel: %zu not found, thus not cancelled \n", thread_id);
+
+    return -1ULL;
+}
+
+
