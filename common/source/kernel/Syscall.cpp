@@ -55,8 +55,11 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
     case sc_pthread_create:
           return_value =pthread_create(arg1, arg2, reinterpret_cast<void *(*)(void *)>(arg3), arg4, arg5);
       break;
-      case sc_pthread_exit:
+    case sc_pthread_exit:
           pthread_exit(reinterpret_cast<void *>(arg1));
+          break;
+      case sc_pthread_cancel:
+          return_value = pthread_cancel(arg1);
           break;
     default:
       return_value = -1;
