@@ -21,6 +21,10 @@ class Syscall
     static size_t pthread_create(pointer thread, pointer attr, void *(*start_routine)(void *), pointer arg,pointer wrapper);
 
     static void pthread_exit(void *value);
+
     static size_t pthread_cancel(size_t thread_id);
+    size_t pthread_setcancelstate(size_t state, size_t *oldstate);
+    size_t pthread_setcanceltype(size_t type, size_t *oldtype);
+
 };
 
