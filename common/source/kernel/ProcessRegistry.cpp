@@ -6,11 +6,16 @@
 #include "VfsSyscall.h"
 #include "VirtualFileSystem.h"
 #include "PageManager.h"
+#include <uset.h>
+#include <ustl/umap.h>
+#include <ulist.h>
+
 
 ProcessRegistry* ProcessRegistry::instance_ = 0;
 
 ProcessRegistry::ProcessRegistry(FileSystemInfo *root_fs_info, char const *progs[]) :
-    Thread(root_fs_info, "ProcessRegistry", Thread::KERNEL_THREAD),progs_(progs), progs_running_(0),
+    Thread(root_fs_info, "ProcessRegistry", Thread::KERNEL_THREAD),process_lock_("ProcessRegistry::process_lock_"), progs_(progs),
+    progs_running_(0),
     counter_lock_("ProcessRegistry::counter_lock_"),
     all_processes_killed_(&counter_lock_, "ProcessRegistry::all_processes_killed_")
 {
@@ -110,4 +115,27 @@ void ProcessRegistry::createProcess(const char* path) {
     if (process) {
         debug(PROCESS_REG, "create process %s\n", path);
     }
+
+}
+
+size_t ProcessRegistry::fork()
+{
+    if(progs_running_ == 0)
+        return -1;
+
+    UserThread *current_thread = (UserThread*)currentThread;
+    UserProcess *current_process = current_thread->getProcess();
+    debug(PROCESS_REG, "TID= %ld, PID= %ld\n", current_thread->tid_, current_process->pid_);
+    size_t pid = progs_running_ + 1;
+
+    UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
+
+    process_map_.push_back(ustl::make_pair(pid, current_process));
+
+    if(new_process == nullptr)
+        return -1;
+
+    progs_running_++;
+
+    return pid;
 }
