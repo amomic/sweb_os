@@ -8,7 +8,9 @@ class UserThread;
 class UserProcess
 {
 public:
-    /**
+
+
+/**
      * Constructor
      * @param minixfs_filename filename of the file in minixfs to execute
      * @param fs_info filesysteminfo-object to be used
@@ -17,7 +19,7 @@ public:
      */
     Loader* loader_;
     UserProcess(ustl::string minixfs_filename, FileSystemInfo *fs_info, uint32 terminal_number = 0);
-
+    UserProcess(UserProcess &parent_process, UserThread &current_thread, size_t process_id);
     virtual ~UserProcess();
 
     virtual void Run(); // not used
@@ -28,7 +30,7 @@ public:
     ustl::map<size_t, Thread *> threads_map_;
     Mutex threads_lock_;
     Mutex pages_lock_;
-
+    size_t pid_;
 
     size_t virtual_pages_;
     size_t threads_alive_;
@@ -43,8 +45,7 @@ private:
     ustl::string filename_;
     FileSystemInfo *fs_info_;
     uint32 terminal_number_;
-    size_t tid_;
-    size_t pid_;
+
 
 };
 

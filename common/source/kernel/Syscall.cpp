@@ -63,6 +63,9 @@ Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_
         case sc_pthread_cancel:
             return_value = pthread_cancel(arg1);
             break;
+        case sc_fork:
+            return_value = fork();
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -272,6 +275,12 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype)
           *oldtype);
 
     return 0;
+}
+
+size_t Syscall::fork()
+{
+    debug(SYSCALL, "Syscall::fork\n");
+    return ProcessRegistry::instance()->fork();
 }
 
 
