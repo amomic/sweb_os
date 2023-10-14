@@ -14,7 +14,8 @@
 
 UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number) :
         threads_lock_("UserProcess::threads_lock_"), pages_lock_("UserProcess::pages_lock_"),
-        threads_alive_(0), fd_(VfsSyscall::open(filename, O_RDONLY)),filename_(filename), fs_info_(fs_info),
+        return_val_lock_("UserProcess::return_val_lock_"), threads_alive_(0),
+        fd_(VfsSyscall::open(filename, O_RDONLY)),filename_(filename), fs_info_(fs_info),
         terminal_number_(terminal_number)
 {
     ProcessRegistry::instance()->processStart(); //should also be called if you fork a process
@@ -103,4 +104,48 @@ void UserProcess::CleanThreads(size_t thread)
         threads_map_.erase(thread);
         delete this;
     }
+}
+
+size_t UserProcess::join_thread(size_t thread, pointer return_val) {
+    if((size_t)return_val >= USER_BREAK) // Check if return_val is valid
+        return -1ULL;
+
+    if(currentThread->getTID() == thread) // Self-join check
+        return -1ULL;
+
+    //auto current_thread = reinterpret_cast<UserThread*>(currentThread);
+    auto current_process = reinterpret_cast<UserThread*>(currentThread)->getProcess();
+
+    UserThread* thread_map_entry = reinterpret_cast<UserThread *>(threads_map_.find(thread));
+
+    current_process->threads_lock_.acquire();
+
+    if(threads_map_.find(thread) == threads_map_.end() || thread_map_entry->getJoinTID() != 0){ // Check if thread in map and if joinable
+        current_process->threads_lock_.release();
+        current_process->return_val_lock_.acquire();
+
+        auto thread_retval_map_entry = current_process->thread_retval_map.find(thread);
+
+        if(thread_retval_map_entry == current_process->thread_retval_map.end()){ // retval not found in list
+            current_process->return_val_lock_.release();
+            return -1ULL;
+        } else { // retval found in list
+            if(return_val != NULL){
+                thread_retval_map_entry = current_process->thread_retval_map.find(thread);
+                if(thread_retval_map_entry != current_process->thread_retval_map.end()){
+                    *(size_t*) return_val = (size_t) thread_retval_map_entry->second;
+                    current_process->thread_retval_map.erase(thread);
+                }
+                current_process->return_val_lock_.release();
+                return 0;
+            } else {
+                if(thread_retval_map_entry != current_process->thread_retval_map.end())
+                    current_process->thread_retval_map.erase(thread);
+                current_process->return_val_lock_.release();
+                return 0;
+            }
+        }
+    }
+
+    return 0;
 }

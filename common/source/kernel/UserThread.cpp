@@ -96,3 +96,11 @@ UserProcess* UserThread::getProcess()
     return process_;
 }
 
+void UserThread::setJoinTID(size_t tid) {
+    join_TID = tid;
+}
+
+size_t UserThread::getJoinTID()
+{
+    return join_TID;
+}
