@@ -63,6 +63,12 @@ Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_
         case sc_pthread_cancel:
             return_value = pthread_cancel(arg1);
             break;
+        case sc_pthread_setcanceltype:
+            return_value = pthread_setcanceltype(arg1, (size_t*)arg2);
+            break;
+        case sc_pthread_setcancelstate:
+            return_value = pthread_setcancelstate(arg1, (size_t*)arg2);
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -269,6 +275,8 @@ size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate)
         return -1ULL;
     }
 
+    // myb chck invalid state?
+
     if (oldstate != nullptr)
     {
         *oldstate = current_thread->thread_cancel_state_;
@@ -282,6 +290,21 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype)
 {
     debug(CANCEL_INFO, "pthread_setcancletype is being called with the following arguments: %zu %zu \n", type,
           *oldtype);
+    UserThread *current_thread = reinterpret_cast<UserThread *>(currentThread);
+
+    // Oldstate should not be nullpointer or kernelpointer
+    if ((size_t) oldtype >= USER_BREAK)
+    {
+        return -1ULL;
+    }
+
+    // myb chck invalid state?
+
+    if (oldtype != nullptr)
+    {
+        *oldtype = current_thread->thread_cancel_type_;
+    }
+    reinterpret_cast<UserThread*> (currentThread)->thread_cancel_type_ = (UserThread::THREAD_CANCEL_TYPE) type;
 
     return 0;
 }
