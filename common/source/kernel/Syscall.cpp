@@ -220,7 +220,6 @@ Syscall::pthread_create(pointer thread, pointer attr, void *(start_routine)(void
 
 void Syscall::pthread_exit([[maybe_unused]]void *value)
 {
-
     //to update (freeing resources, joining etc)
     UserThread *currThread = (UserThread *) currentThread;
     //currThread->process_->unmapPage();
@@ -243,15 +242,23 @@ size_t Syscall::pthread_cancel(size_t thread_id)
         // get the thread from table with iterator
         UserThread *cancelled_thread = reinterpret_cast<UserThread *>(thread_map_entry->second);
 
-        //cancle thread ??
-        cancelled_thread->thread_cancellation_state_ = UserThread::ISCANCELED;
-        debug(CANCEL_SUCCESS, "Syscall::pthread_cancel-> %zu thread has been flagged for cancellation\n",
-              cancelled_thread->getTID());
+        if (cancelled_thread->thread_cancel_state_ == UserThread::THREAD_CANCEL_STATE::ENABLED &&
+            cancelled_thread->thread_cancel_type_ == UserThread::THREAD_CANCEL_TYPE::DEFERRED)
+        {
+            //cancle thread ??
+            cancelled_thread->thread_cancellation_state_ = UserThread::ISCANCELED;
+            debug(CANCEL_SUCCESS, "Syscall::pthread_cancel-> %zu thread has been flagged for cancellation\n",
+                  cancelled_thread->getTID());
 
-        // unlock threads map, ret success -> (0)
-        currentUserProcess->threads_lock_.release();
-        debug(CANCEL_INFO, "Syscall::pthread_cancel has unlocked threads map\n");
-        return 0;
+            // unlock threads map, ret success -> (0)
+            currentUserProcess->threads_lock_.release();
+            debug(CANCEL_INFO, "Syscall::pthread_cancel has unlocked threads map\n");
+            return 0;
+        }else {
+            debug(CANCEL_ERROR, "Syscall::pthread_cancel: %zu found, but cannot cancelled \n", thread_id);
+
+            return -1ULL;
+        }
     }
 
     // unlock threads map
@@ -268,6 +275,13 @@ size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate)
     debug(CANCEL_INFO, "pthread_setcanclestate is being called with the following arguments: %zu %zu \n", state,
           *oldstate);
     UserThread *current_thread = reinterpret_cast<UserThread *>(currentThread);
+
+    // check for unknown state
+    if(state != UserThread::THREAD_CANCEL_STATE::ENABLED && state != UserThread::THREAD_CANCEL_STATE::DISABLED)
+    {
+        debug(CANCEL_ERROR, "pthread_setcanclestate-> State invalid!!!\n");
+        return -1ULL;
+    }
 
     // Oldstate should not be nullpointer or kernelpointer
     if ((size_t) oldstate >= USER_BREAK)
@@ -291,6 +305,13 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype)
     debug(CANCEL_INFO, "pthread_setcancletype is being called with the following arguments: %zu %zu \n", type,
           *oldtype);
     UserThread *current_thread = reinterpret_cast<UserThread *>(currentThread);
+
+    // check for unknown type
+    if(type != UserThread::THREAD_CANCEL_TYPE::DEFERRED && type != UserThread::THREAD_CANCEL_TYPE::ASYNCHRONOUS)
+    {
+        debug(CANCEL_ERROR, "pthread_setcanclestate-> State invalid!!!\n");
+        return -1ULL;
+    }
 
     // Oldstate should not be nullpointer or kernelpointer
     if ((size_t) oldtype >= USER_BREAK)
