@@ -259,9 +259,21 @@ size_t Syscall::pthread_cancel(size_t thread_id)
 
 size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate)
 {
-
     debug(CANCEL_INFO, "pthread_setcanclestate is being called with the following arguments: %zu %zu \n", state,
           *oldstate);
+    UserThread *current_thread = reinterpret_cast<UserThread *>(current_thread);
+
+    // Oldstate should not be nullpointer or kernelpointer
+    if ((size_t) oldstate >= USER_BREAK)
+    {
+        return -1ULL;
+    }
+
+    if (oldstate != nullptr)
+    {
+        *oldstate = current_thread->thread_cancel_state_;
+    }
+    reinterpret_cast<UserThread*> (currentThread)->thread_cancel_state_ = (UserThread::THREAD_CANCEL_STATE); state;
 
     return 0;
 }
