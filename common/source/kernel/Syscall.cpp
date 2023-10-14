@@ -273,7 +273,7 @@ size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate)
     {
         *oldstate = current_thread->thread_cancel_state_;
     }
-    reinterpret_cast<UserThread*> (currentThread)->thread_cancel_state_ = (UserThread::THREAD_CANCEL_STATE); state;
+    reinterpret_cast<UserThread*> (currentThread)->thread_cancel_state_ = (UserThread::THREAD_CANCEL_STATE) state;
 
     return 0;
 }
