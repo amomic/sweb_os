@@ -213,3 +213,10 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     //currThread->process_->unmapPage();
     currThread -> kill();
 }
+
+size_t Syscall::pthread_join(size_t joinee_thread, [[maybe_unused]]pointer return_val){
+
+    UserThread* joiner_thread = reinterpret_cast<UserThread*>(currentThread);
+
+    return joiner_thread->getProcess()->join_thread(joinee_thread, return_val);
+}

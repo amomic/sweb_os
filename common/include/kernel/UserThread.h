@@ -20,12 +20,13 @@ public:
         size_t tid_;
         size_t offset_{};
 
+        void setJoinTID(size_t tid);
+        size_t getJoinTID();
 
 private:
         ustl::string filename_;
         FileSystemInfo *fs_info_{};
         uint32 terminal_number_;
         size_t virtual_pages_{};
-
-
+        size_t join_TID;
 };
