@@ -26,5 +26,7 @@ class Syscall
     size_t pthread_setcancelstate(size_t state, size_t *oldstate);
     size_t pthread_setcanceltype(size_t type, size_t *oldtype);
 
+    static size_t fork();
+
 };
 

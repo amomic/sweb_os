@@ -16,8 +16,8 @@ public:
                void *(*start_routine)(void *), void *wrapper, size_t tid, void *argc, size_t args);
 
     //copy constructor
-    //UserThread([[maybe_unused]]const UserThread &process_thread_pointer, UserProcess *parent_process,
-    //  uint32 terminal_number, ustl::string filename, FileSystemInfo *fs_info, size_t thread_id);
+    UserThread([[maybe_unused]]const UserThread &process_thread_pointer, UserProcess *parent_process,
+      uint32 terminal_number, ustl::string filename, FileSystemInfo *fs_info, size_t thread_id);
     ~UserThread();
 
     void Run();
@@ -28,6 +28,7 @@ public:
     static const size_t STACK_PAGES = 15;
     size_t tid_;
     size_t offset_{};
+    void* wrapper_;
 
     // Thread Cancle Attr
     THREAD_CANCEL_TYPE thread_cancel_type_ = THREAD_CANCEL_TYPE::DEFERRED;
