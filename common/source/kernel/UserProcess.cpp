@@ -113,14 +113,15 @@ size_t UserProcess::join_thread(size_t thread, pointer return_val) {
     if(currentThread->getTID() == thread) // Self-join check
         return -1ULL;
 
-    //auto current_thread = reinterpret_cast<UserThread*>(currentThread);
+    auto current_thread = reinterpret_cast<UserThread*>(currentThread);
     auto current_process = reinterpret_cast<UserThread*>(currentThread)->getProcess();
 
-    UserThread* thread_map_entry = reinterpret_cast<UserThread *>(threads_map_.find(thread));
+    auto thread_map_entry = threads_map_.find(thread);
+    auto joining_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
 
     current_process->threads_lock_.acquire();
 
-    if(threads_map_.find(thread) == threads_map_.end() || thread_map_entry->getJoinTID() != 0){ // Check if thread in map and if joinable
+    if(threads_map_.find(thread) == threads_map_.end() || joining_thread->getJoinTID() != 0){ // Check if thread in map and if joinable
         current_process->threads_lock_.release();
         current_process->return_val_lock_.acquire();
 
@@ -145,7 +146,78 @@ size_t UserProcess::join_thread(size_t thread, pointer return_val) {
                 return 0;
             }
         }
-    }
+    } else {    // Found in map
+        if (joining_thread->type_of_join_ == UserThread::DETATCH_STATE::JOINABLE){
+            if (current_thread->waited_by_ == nullptr && joining_thread->waited_by_ == nullptr){    // Deadlock check
+                if(joining_thread->waiting_for_ != current_thread){
+                    current_thread->waiting_for_ = joining_thread;
+                    joining_thread->waited_by_ = current_thread;
+                    current_process->threads_lock_.release();
+                } else {    // If deadlock detected
+                    current_process->threads_lock_.release();
+                    return -1ULL;
+                }
+            } else {    // Waited by some other thread
+                current_process->threads_lock_.release();
+                return -1ULL;
+            }
+        } else {    // Is detached
+            current_process->threads_lock_.release();
+            return -1ULL;
+        }
 
-    return 0;
+        joining_thread->setJoinTID(current_thread->getTID());
+
+        current_process->return_val_lock_.acquire();                // Checking if thread is finished
+        auto thread_retval_map_entry = current_process->thread_retval_map.find(thread);
+
+        if (current_process->thread_retval_map.end() != thread_retval_map_entry){
+            if (return_val != NULL){
+                thread_retval_map_entry = current_process->thread_retval_map.find(thread);
+                if (current_process->thread_retval_map.end() != thread_retval_map_entry){
+                    *(size_t*)return_val = (size_t)thread_retval_map_entry->second;
+                    current_process->thread_retval_map.erase(thread);
+                }
+                joining_thread->waited_by_ = nullptr;
+                current_thread->waiting_for_ = nullptr;
+                current_process->return_val_lock_.release();
+            } else {
+                if (current_process->thread_retval_map.end() != thread_retval_map_entry)
+                    current_process->thread_retval_map.erase(thread);
+                joining_thread->waited_by_ = nullptr;
+                current_thread->waiting_for_ = nullptr;
+                current_process->return_val_lock_.release();
+            }               // Thread already finished
+            return 0;
+        } else {
+
+            current_thread->join_condition_.wait(); // Thread not finished, waiting for finish
+
+            if (return_val != NULL){ // Has finished
+                thread_retval_map_entry = thread_retval_map.find(thread);
+                if (current_process->thread_retval_map.end() != thread_retval_map_entry){
+                    *(size_t*) return_val = (size_t)thread_retval_map_entry->second;
+                    current_process->thread_retval_map.erase(thread);
+                }
+                current_process->return_val_lock_.release();
+            } else {
+                thread_retval_map_entry = thread_retval_map.find(thread);
+                if (current_process->thread_retval_map.end() != thread_retval_map_entry){
+                    current_process->thread_retval_map.erase(thread);
+                }
+                current_process->return_val_lock_.release();
+            }
+
+            /*
+             * TODO ? :
+             * if current_process->thread_retval_map.end() == thread_retval_map_entry && current_thread is set to be Canceled
+             * set the joinTID
+             +
+             * TODO :
+             * Add debug statements
+             */
+
+            return 0;
+        }
+    }
 }
