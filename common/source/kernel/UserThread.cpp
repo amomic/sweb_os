@@ -16,6 +16,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(userProcess),
         tid_(tid),
+        join_condition_(&userProcess->return_val_lock_, "UserThread::join_condition_"),
         terminal_number_(terminal_number)
 {
     loader_ = userProcess->getLoader();
