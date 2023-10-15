@@ -207,7 +207,8 @@ size_t Syscall::pthread_create(pointer thread, pointer attr, void *(start_routin
 }
 
 void Syscall::pthread_exit([[maybe_unused]]void *value) {
-
+ // TODO:
+ // Finish JOIN
     //to update (freeing resources, joining etc)
     UserThread* currThread = (UserThread*) currentThread;
     //currThread->process_->unmapPage();
