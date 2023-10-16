@@ -87,3 +87,9 @@ const size_t M_STORAGE_MANAGER  = Ansi_Yellow;
 const size_t M_INODE            = Ansi_Yellow;
 const size_t M_SB               = Ansi_Yellow;
 const size_t M_ZONE             = Ansi_Yellow;
+
+// thread cancel
+const size_t CANCEL_SUCCESS     = Ansi_Green;
+const size_t CANCEL_INFO        = Ansi_White;
+const size_t CANCEL_ERROR       = Ansi_Red;
+
