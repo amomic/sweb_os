@@ -23,6 +23,9 @@ class Syscall
 
     static void pthread_exit(void *value);
 
-    static size_t pthread_join(size_t thread_waited_for, void** return_val);
+    static size_t pthread_cancel(size_t thread_id);
+    static size_t pthread_setcancelstate(size_t state, size_t *oldstate);
+    static size_t pthread_setcanceltype(size_t type, size_t *oldtype);
+
 };
 
