@@ -16,6 +16,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(userProcess),
         tid_(tid),
+        join_condition_(&userProcess->return_val_lock_, "UserThread::join_condition_"),
         terminal_number_(terminal_number)
 {
     wrapper_ = wrapper;
@@ -29,7 +30,6 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     debug(USERTHREAD, "Before VPN_MAPPED\n");
 
     bool vpn_mapped = -1;
-
 
     if(tid == 0)
     {
@@ -129,3 +129,11 @@ UserProcess* UserThread::getProcess()
     return process_;
 }
 
+void UserThread::setJoinTID(size_t tid) {
+    join_TID = tid;
+}
+
+size_t UserThread::getJoinTID()
+{
+    return join_TID;
+}
