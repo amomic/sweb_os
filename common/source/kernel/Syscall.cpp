@@ -55,9 +55,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
     case sc_pthread_create:
       return_value =pthread_create(arg1, arg2, reinterpret_cast<void *(*)(void *)>(arg3), arg4, arg5);
       break;
-    /*case sc_pthread_join:
+    case sc_pthread_join:
       return_value = pthread_join(arg1, arg2);
-      break;*/
+      break;
     case sc_pthread_exit:
       pthread_exit(reinterpret_cast<void *>(arg1));
       break;
@@ -238,10 +238,10 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     //currThread->process_->unmapPage();
     current_thread -> kill();
 }
-/*
+
 size_t Syscall::pthread_join(size_t joinee_thread, [[maybe_unused]]pointer return_val){
 
     UserThread* joiner_thread = reinterpret_cast<UserThread*>(currentThread);
 
         return joiner_thread->getProcess()->joinThread(joinee_thread, return_val);
-}*/
+}
