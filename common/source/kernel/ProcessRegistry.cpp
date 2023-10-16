@@ -123,6 +123,7 @@ size_t ProcessRegistry::fork()
     if(progs_running_ == 0)
         return -1;
 
+    process_lock_.acquire();
     UserThread *current_thread = (UserThread*)currentThread;
     UserProcess *current_process = current_thread->getProcess();
     debug(PROCESS_REG, "TID= %ld, PID= %ld\n", current_thread->tid_, current_process->pid_);
@@ -130,12 +131,17 @@ size_t ProcessRegistry::fork()
 
     UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
 
+
     process_map_.push_back(ustl::make_pair(pid, current_process));
 
     if(new_process == nullptr)
+    {
+        process_lock_.release();
         return -1;
+    }
 
     progs_running_++;
+    process_lock_.release();
 
     return pid;
 }
