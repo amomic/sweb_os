@@ -48,6 +48,7 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
 UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread, size_t process_id):
         threads_lock_("UserProcess::threads_lock_"),
         pages_lock_("UserProcess::pages_lock_"),
+        return_val_lock_("UserProcess::return_val_lock_"),
         pid_(process_id),
         threads_alive_(0),
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)), working_dir_(new FileSystemInfo(*parent_process.working_dir_)),
