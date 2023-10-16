@@ -106,24 +106,29 @@ void UserProcess::CleanThreads(size_t thread)
     }
 }
 
-size_t UserProcess::join_thread(size_t thread, pointer return_val) {
+size_t UserProcess::joinThread(size_t thread, pointer return_val) {
+    debug(SYSCALL, "uso u joinThraed");
+
     if((size_t)return_val >= USER_BREAK) // Check if return_val is valid
         return -1ULL;
 
     if(currentThread->getTID() == thread) // Self-join check
         return -1ULL;
+    debug(SYSCALL, "Initial checks u joinThraed");
 
-    auto current_thread = reinterpret_cast<UserThread*>(currentThread);
+    UserThread* current_thread = reinterpret_cast<UserThread*>(currentThread);
     auto current_process = reinterpret_cast<UserThread*>(currentThread)->getProcess();
 
     auto thread_map_entry = threads_map_.find(thread);
-    auto joining_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
+    UserThread* joining_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
 
     current_process->threads_lock_.acquire();
+    debug(SYSCALL, "Izmedu prvog locka i ifa u joinThraed");
 
     if(threads_map_.find(thread) == threads_map_.end() || joining_thread->getJoinTID() != 0){ // Check if thread in map and if joinable
         current_process->threads_lock_.release();
         current_process->return_val_lock_.acquire();
+        debug(SYSCALL, "Prvi if u joinThraed");
 
         auto thread_retval_map_entry = current_process->thread_retval_map.find(thread);
 
@@ -131,17 +136,17 @@ size_t UserProcess::join_thread(size_t thread, pointer return_val) {
             current_process->return_val_lock_.release();
             return -1ULL;
         } else { // retval found in list
-            if(return_val != NULL){
+            if(return_val == NULL){
                 thread_retval_map_entry = current_process->thread_retval_map.find(thread);
-                if(thread_retval_map_entry != current_process->thread_retval_map.end()){
-                    *(size_t*) return_val = (size_t) thread_retval_map_entry->second;
+                if(thread_retval_map_entry != current_process->thread_retval_map.end())
                     current_process->thread_retval_map.erase(thread);
-                }
                 current_process->return_val_lock_.release();
                 return 0;
             } else {
-                if(thread_retval_map_entry != current_process->thread_retval_map.end())
+                if(thread_retval_map_entry != current_process->thread_retval_map.end()) {
+                    *(size_t *) return_val = (size_t) thread_retval_map_entry->second;
                     current_process->thread_retval_map.erase(thread);
+                }
                 current_process->return_val_lock_.release();
                 return 0;
             }
@@ -161,7 +166,7 @@ size_t UserProcess::join_thread(size_t thread, pointer return_val) {
                 current_process->threads_lock_.release();
                 return -1ULL;
             }
-        } else {    // Is detached
+        } else {   // Is detached
             current_process->threads_lock_.release();
             return -1ULL;
         }

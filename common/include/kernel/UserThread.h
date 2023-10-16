@@ -33,6 +33,7 @@ public:
         UserThread* waited_by_ = nullptr;
 
         Condition join_condition_;
+
 private:
         ustl::string filename_;
         FileSystemInfo *fs_info_{};

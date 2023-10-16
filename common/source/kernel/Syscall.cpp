@@ -53,11 +53,14 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
       pseudols((const char*) arg1, (char*) arg2, arg3);
       break;
     case sc_pthread_create:
-          return_value =pthread_create(arg1, arg2, reinterpret_cast<void *(*)(void *)>(arg3), arg4, arg5);
+      return_value =pthread_create(arg1, arg2, reinterpret_cast<void *(*)(void *)>(arg3), arg4, arg5);
       break;
-      case sc_pthread_exit:
-          pthread_exit(reinterpret_cast<void *>(arg1));
-          break;
+    case sc_pthread_join:
+      return_value = pthread_join(arg1, arg2);
+      break;
+    case sc_pthread_exit:
+      pthread_exit(reinterpret_cast<void *>(arg1));
+      break;
     default:
       return_value = -1;
       kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -210,14 +213,38 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
  // TODO:
  // Finish JOIN
     //to update (freeing resources, joining etc)
-    UserThread* currThread = (UserThread*) currentThread;
+    UserThread* current_thread = (UserThread*) currentThread;
+    UserProcess* current_process = current_thread->getProcess();
+    debug(SYSCALL, "uso sam u exit ! \n");
+    current_process->return_val_lock_.acquire();
+
+    // Store return value
+    current_process->thread_retval_map.push_back({current_thread->getTID(), (void*)value});
+
+    if (current_thread->waited_by_ != nullptr) {
+        debug(SYSCALL, "pred signal u exitu");
+        current_thread->waited_by_->join_condition_.signal();
+
+        current_thread->waited_by_->waiting_for_ = nullptr;
+        current_thread->waited_by_ = nullptr;
+    }
+    debug(SYSCALL, "iza signal u exitu");
+
+    current_process->return_val_lock_.release();
+
+    current_thread->getProcess()->threads_lock_.acquire();
+    current_thread->getProcess()->threads_map_.erase(current_thread->getTID());
+    current_thread->getProcess()->threads_lock_.release();
+    debug(SYSCALL, "pred kill u exitu");
+
     //currThread->process_->unmapPage();
-    currThread -> kill();
+    current_thread -> kill();
 }
 
 size_t Syscall::pthread_join(size_t joinee_thread, [[maybe_unused]]pointer return_val){
+    debug(SYSCALL, "pred pozivanje join_threada u syscall.cpp");
 
     UserThread* joiner_thread = reinterpret_cast<UserThread*>(currentThread);
 
-    return joiner_thread->getProcess()->join_thread(joinee_thread, return_val);
+    return joiner_thread->getProcess()->joinThread(joinee_thread, return_val);
 }
