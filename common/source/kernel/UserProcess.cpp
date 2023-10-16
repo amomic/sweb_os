@@ -23,6 +23,7 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
     if (fd_ >= 0)
         loader_ = new Loader(fd_);
 
+
     if (!loader_ || !loader_->loadExecutableAndInitProcess())
     {
         debug(USERPROCESS, "Error: loading %s failed!\n", filename.c_str());
