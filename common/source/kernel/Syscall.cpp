@@ -12,6 +12,14 @@
 #include "ArchMemory.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5) {
+
+
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+        pthread_exit(reinterpret_cast<void *>(-1ULL));
+    }
+
     size_t return_value = 0;
     if ((syscall_number != sc_sched_yield) &&
         (syscall_number != sc_outline)) // no debug print because these might occur very often
@@ -73,6 +81,12 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
     }
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+        pthread_exit(reinterpret_cast<void *>(-1ULL));
+    }
+
     return return_value;
 }
 
@@ -261,7 +275,8 @@ size_t Syscall::pthread_cancel(size_t thread_id) {
             return 0;
         } else {
             debug(CANCEL_ERROR, "Syscall::pthread_cancel: %zu found, but cannot cancelled \n", thread_id);
-
+            currentUserProcess->threads_lock_.release();
+            debug(CANCEL_INFO, "Syscall::pthread_cancel has unlocked threads map\n");
             return -1ULL;
         }
     }
