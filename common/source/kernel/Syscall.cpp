@@ -79,6 +79,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             break;
         case sc_pthread_detach:
             return_value = pthread_detach(arg1);
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -245,14 +246,14 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
 
 size_t Syscall::pthread_join(size_t joinee_thread, [[maybe_unused]]pointer return_val) {
 
-    UserThread *joiner_thread = reinterpret_cast<UserThread *>(currentThread);
+    auto joiner_thread = reinterpret_cast<UserThread *>(currentThread);
 
     return joiner_thread->getProcess()->joinThread(joinee_thread, return_val);
 }
 
 size_t Syscall::pthread_detach(size_t thread) {
-    UserThread* detach_thread = reinterpret_cast<UserThread*>(currentThread);
-    return detach_thread->getProcess()detachThread(thread);
+    auto detach_thread = reinterpret_cast<UserThread*>(currentThread);
+    return detach_thread->getProcess()->detachThread(thread);
 }
 
 size_t Syscall::pthread_cancel(size_t thread_id) {
