@@ -227,3 +227,36 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
         }
     }
 }
+
+size_t UserProcess::detachThread(size_t thread) {
+    auto current_thread = reinterpret_cast<UserThread*>(currentThread);
+    auto current_process = reinterpret_cast<UserThread*>(current_thread)->getProcess();
+
+    current_process->threads_lock_.acquire();
+
+    auto thread_map_entry = current_process->threads_map_.find(thread);
+
+    if (threads_map_.find(thread) == threads_map_.end()){
+        current_process->threads_lock_.release();
+        return -1ULL;
+    }
+
+    auto detach_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
+
+    if (detach_thread->waited_by_ == nullptr){
+        detach_thread->waited_by_->join_condition_.signal();
+
+        detach_thread->waited_by_->waiting_for_ = nullptr;
+        detach_thread->waited_by_ = nullptr;
+    }
+
+    if (detach_thread->type_of_join_ == UserThread::JOINABLE){
+        detach_thread->type_of_join_ = UserThread::DETATCHED;
+        current_process->threads_lock_.release();
+    } else {
+        current_process->threads_lock_.release();
+        return -1ULL;
+    }
+    return 0;
+}
+
