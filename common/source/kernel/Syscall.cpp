@@ -245,13 +245,12 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
 }
 
 size_t Syscall::pthread_join(size_t joinee_thread, [[maybe_unused]]pointer return_val) {
-
     auto joiner_thread = reinterpret_cast<UserThread *>(currentThread);
-
     return joiner_thread->getProcess()->joinThread(joinee_thread, return_val);
 }
 
 size_t Syscall::pthread_detach(size_t thread) {
+    kprintf("SYSCALL STARTED!\n");
     auto detach_thread = reinterpret_cast<UserThread*>(currentThread);
     return detach_thread->getProcess()->detachThread(thread);
 }
