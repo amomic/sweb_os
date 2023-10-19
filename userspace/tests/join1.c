@@ -1,27 +1,29 @@
 //
 // Created by mirza on 16.10.23.
+// Basic join test
 //
 #include "stdio.h"
 #include "pthread.h"
 #include "assert.h"
 
-void *thread_function(void *arg) {
-    int i = 0;
-    for(i = 0; i < 20; i++);
-    assert(i=20);
+void* thread_function(void* arg) {
+    int* value = (int*)arg;
+    *value = 42;
     return NULL;
 }
 
 int main() {
     pthread_t thread;
-    int res = pthread_create(&thread, NULL, thread_function, NULL);
+    void* result = 0;
 
-    assert(!res && "FAIL");
+    int value = 0;
+    pthread_create(&thread, NULL, thread_function, &value);
 
-    void *result;
-    pthread_join(thread, &result);
+    int join_result = pthread_join(thread, &result);
+    assert(join_result == 0);
+    assert(value == 42);
+    printf("Thread result: %d;\nReturned: %d\n", (int)(intptr_t)result,join_result);
 
-    printf("Thread result: %d\n", (int)(intptr_t)result);
-
+    printf("   Test 1: Thread joined successful!\n\n");
     return 0;
 }
