@@ -14,7 +14,8 @@ Loader::Loader(ssize_t fd) : fd_(fd), hdr_(0), phdrs_(), program_binary_lock_("L
 {
 }
 
-Loader::Loader([[maybe_unused]]Loader& loader, ssize_t fd) :
+Loader::Loader(Loader& loader, ssize_t fd) :
+        arch_memory_(loader.arch_memory_),
         fd_(fd),
         hdr_(0),
         phdrs_(),

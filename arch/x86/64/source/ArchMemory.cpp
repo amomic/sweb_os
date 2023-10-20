@@ -11,13 +11,114 @@ PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTE
 PageDirEntry kernel_page_directory[2 * PAGE_DIR_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageTableEntry kernel_page_table[8 * PAGE_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 
-ArchMemory::ArchMemory()
+ArchMemory::ArchMemory() : arch_mem_lock("arch_mem_lock")
 {
   page_map_level_4_ = PageManager::instance()->allocPPN();
   PageMapLevel4Entry* new_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
   memcpy((void*) new_pml4, (void*) kernel_page_map_level_4, PAGE_SIZE);
   memset(new_pml4, 0, PAGE_SIZE / 2); // should be zero, this is just for safety
 }
+
+ArchMemory::ArchMemory(ArchMemory const &parent) : arch_mem_lock("arch_mem_lock")
+{
+  debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!");
+
+  arch_mem_lock.acquire();
+
+//----------------------------------------PML4--------------------------------------------------------------------------
+
+  PageMapLevel4Entry  *parent_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(parent.page_map_level_4_);
+  PageMapLevel4Entry  *child_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(
+          reinterpret_cast<uint64>(getRootOfKernelPagingStructure()));
+
+  memcpy(child_pml4, parent_pml4, PAGE_SIZE);
+
+  debug(A_MEMORY, "[Fork] Memory copy for PML4 done!");
+
+  //divide by 2 to free only the lower half
+  for(uint64 pml4i = 0; pml4i < PAGE_MAP_LEVEL_4_ENTRIES / 2; pml4i++)
+  {
+      if(parent_pml4[pml4i].present)
+      {
+          //set cow bit
+          //set writable bit
+
+          child_pml4[pml4i] = parent_pml4[pml4i];
+
+          debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!");
+
+//----------------------------------------PDPT--------------------------------------------------------------------------
+
+          PageDirPointerTableEntry *parent_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(parent_pml4[pml4i].page_ppn);
+          PageDirPointerTableEntry *child_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(child_pml4[pml4i].page_ppn);
+
+          memcpy(child_pdpt, parent_pdpt, PAGE_SIZE);
+
+          debug(A_MEMORY, "[Fork] Memory copy for PDPT done!");
+
+          for(uint64 pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++)
+          {
+              if(parent_pdpt[pdpti].pd.present)
+              {
+                  //set cow bit
+                  //set writable bit
+
+                  child_pdpt[pdpti] = parent_pdpt[pdpti];
+
+                  debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!");
+
+//------------------------------------------PD--------------------------------------------------------------------------
+
+                  PageDirEntry *parent_pd = (PageDirEntry*) getIdentAddressOfPPN(parent_pdpt[pdpti].pd.page_ppn);
+                  PageDirEntry *child_pd = (PageDirEntry*) getIdentAddressOfPPN(child_pdpt[pdpti].pd.page_ppn);
+
+                  memcpy(child_pd, parent_pd, PAGE_SIZE);
+
+                  debug(A_MEMORY, "[Fork] Memory copy for PD done!");
+
+                  for(uint64 pdi = 0; pdi < PAGE_DIR_ENTRIES; pdi++)
+                  {
+                      if(parent_pd[pdi].pt.present)
+                      {
+                          //set cow bit
+                          //set writable bit
+
+                          child_pd[pdi] = parent_pd[pdi];
+
+                          debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!");
+
+//------------------------------------------PT--------------------------------------------------------------------------
+
+                          PageTableEntry *parent_pt = (PageTableEntry*) getIdentAddressOfPPN(parent_pd[pdi].pt.page_ppn);
+                          PageTableEntry *child_pt = (PageTableEntry*) getIdentAddressOfPPN(child_pd[pdi].pt.page_ppn);
+
+                          memcpy(child_pt, parent_pt, PAGE_SIZE);
+
+                          debug(A_MEMORY, "[Fork] Memory copy for PT done!");
+
+                          for(uint64 pti = 0; pti < PAGE_TABLE_ENTRIES; pti++)
+                          {
+                              if(parent_pt[pti].present)
+                              {
+                                  //set cow bit
+                                  //set writable bit
+
+                                  child_pt[pti] = parent_pt[pti];
+
+                                  debug(A_MEMORY, "[Fork] PT assigned to child.");
+                              }
+                          }
+                      }
+                  }
+              }
+          }
+      }
+  }
+    arch_mem_lock.release();
+
+    debug(A_MEMORY, "[Fork] Arch Memory copy constructor finished!");
+}
+
 
 template<typename T>
 bool ArchMemory::checkAndRemove(pointer map_ptr, uint64 index)
