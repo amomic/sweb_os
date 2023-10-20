@@ -3,6 +3,7 @@
 #include "types.h"
 #include "offsets.h"
 #include "paging-definitions.h"
+#include "Mutex.h"
 
 struct ArchMemoryMapping
 {
@@ -31,6 +32,9 @@ class ArchMemory
   public:
     ArchMemory();
     ~ArchMemory();
+
+    ArchMemory(ArchMemory const &parent);
+    Mutex arch_mem_lock;
 
     uint64 page_map_level_4_;
     static constexpr size_t RESERVED_START = 0xFFFFFFFF80000ULL;
