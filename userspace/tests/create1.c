@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 {
 
     printf("--------------------------------------\n"
-           "Testing Pthread Create - 5 threads in for loop\n");
+           "Testing Pthread Create 1 - 5 threads in for loop\n");
 
     int number_of_threads = 5;
     pthread_t new_thread[number_of_threads];

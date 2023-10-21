@@ -12,7 +12,7 @@ int main()
 {
 
     printf("--------------------------------------\n"
-           "Testing Pthread Create - No params\n");
+           "Testing Pthread Create 3 - No params\n");
 
     pthread_t new_thread;
     int return_value = pthread_create(&new_thread, NULL,

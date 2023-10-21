@@ -6,7 +6,7 @@ int main()
 {
 
     printf("--------------------------------------\n"
-           "Testing Pthread Create - No start routine\n");
+           "Testing Pthread Create 2 - No start routine\n");
 
     pthread_t* new_thread = 0;
     int return_value = pthread_create(new_thread, NULL, NULL, NULL);
