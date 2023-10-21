@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 {
 
     printf("--------------------------------------\n"
-           "Testing\n");
+           "Testing Pthread Create - 5 threads in for loop\n");
 
     int number_of_threads = 5;
     pthread_t new_thread[number_of_threads];
@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
         return_value = pthread_create(&new_thread[cnt], NULL,
                                       &thread_start, NULL);
         assert(return_value == 0);
-        printf("    pthread_create for %d successful!\n", cnt);
+        printf("    pthread_create 1 for %d successful!\n", cnt);
     }
 
     /*for(int cnt = 0; cnt < 1000; cnt++)
