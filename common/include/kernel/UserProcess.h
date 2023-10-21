@@ -23,6 +23,7 @@ public:
     virtual void Run(); // not used
     UserThread *createThread(size_t *thread, size_t *attr, void *(*start_routine)(void *), void *wrapper, uint64 argc, size_t args);
     size_t joinThread(size_t thread, pointer return_val);
+    size_t detachThread(size_t thread);
 
     size_t threads_counter_for_id_ = 0;
     UserProcess* process_;
