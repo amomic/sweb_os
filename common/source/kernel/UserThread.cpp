@@ -58,6 +58,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         user_registers_->rsi = reinterpret_cast<uint64>(argc);
     }
 
+
     if (main_console->getTerminal(terminal_number_))
         setTerminal(main_console->getTerminal(terminal_number_));
 
