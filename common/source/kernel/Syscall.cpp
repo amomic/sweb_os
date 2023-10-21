@@ -9,6 +9,7 @@
 #include "Scheduler.h"
 #include "UserThread.h"
 #include "UserProcess.h"
+#include "Loader.h"
 #include "ArchMemory.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5) {
@@ -105,8 +106,8 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
     VfsSyscall::readdir(pathname, buffer, size);
 }
 
-void Syscall::exit([[maybe_unused]]size_t exit_code) {
-    pthread_exit((void *) -1);
+void Syscall::exit(size_t exit_code) {
+    pthread_exit((void *) exit_code);
 }
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
@@ -241,10 +242,10 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
 
     current_thread->getProcess()->threads_lock_.acquire();
     current_thread->getProcess()->threads_map_.erase(current_thread->getTID());
+    current_thread->process_->loader_->arch_memory_.unmapPage(current_thread->process_->virtual_pages_);
     current_thread->getProcess()->threads_lock_.release();
     debug(SYSCALL, "pred kill u exitu");
 
-    //currThread->process_->unmapPage();
     current_thread->kill();
 }
 
