@@ -225,7 +225,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     //to update (freeing resources, joining etc)
     UserThread *current_thread = (UserThread *) currentThread;
     UserProcess *current_process = current_thread->getProcess();
-    debug(SYSCALL, "uso sam u exit ! \n");
+    debug(SYSCALL, "enterinh pthread exit ! \n");
     current_process->return_val_lock_.acquire();
 
     // Store return value
@@ -242,10 +242,12 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
 
     current_thread->getProcess()->threads_lock_.acquire();
     current_thread->getProcess()->threads_map_.erase(current_thread->getTID());
-    current_thread->process_->loader_->arch_memory_.unmapPage(current_thread->process_->virtual_pages_);
     current_thread->getProcess()->threads_lock_.release();
-    debug(SYSCALL, "pred kill u exitu");
+    debug(SYSCALL, "line before kill in pexit");
 
+    current_thread->getProcess()->pages_lock_.acquire();
+    current_thread->process_->loader_->arch_memory_.unmapPage(current_thread->process_->virtual_pages_);
+    current_thread->getProcess()->pages_lock_.release();
     current_thread->kill();
 }
 
