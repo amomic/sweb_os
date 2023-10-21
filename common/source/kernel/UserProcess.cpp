@@ -321,8 +321,6 @@ size_t UserProcess::detachThread(size_t thread) {
 void UserProcess::unmapPage() {
 
     auto currenThread = reinterpret_cast<UserThread*>(currentThread);
-    currentThread->loader_->arch_memory_.arch_mem_lock.acquire();
     currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
-    currentThread->loader_->arch_memory_.arch_mem_lock.release();
 }
 
