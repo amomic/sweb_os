@@ -14,6 +14,7 @@ int main()
     int return_value = pthread_create(new_thread, NULL, NULL, NULL);
     assert(return_value != 0);
 
+    printf("Starting fork!");
     int retval = fork();
 
     assert(retval == 0);

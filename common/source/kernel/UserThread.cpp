@@ -76,7 +76,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
                        join_condition_(&parent_process->return_val_lock_, "UserThread::join_condition_"),
                        terminal_number_(terminal_number){
 
-    loader_ = parent_process->getLoader();
+    loader_ = process_->getLoader();
     size_t stack_ppn= PageManager::instance()->allocPPN();
 
     this->setTID(thread_id);
@@ -105,8 +105,16 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
                                      (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid_*PAGE_SIZE),
                                      getKernelStackStartPointer());
 
+    // do we need this?
+    memcpy(this->user_registers_, currentThread->user_registers_, sizeof(ArchThreadRegisters));
+
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
 
+    // do we need this?
+    //process_->loader_->arch_memory_.arch_mem_lock.release();
+
+    user_registers_->rax = 0;
+    user_registers_->rsp0 = (size_t)getKernelStackStartPointer();
 
     if (main_console->getTerminal(terminal_number_))
         setTerminal(main_console->getTerminal(terminal_number_));
