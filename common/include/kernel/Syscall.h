@@ -20,6 +20,7 @@ class Syscall
     static void trace();
     static size_t pthread_create(pointer thread, pointer attr, void *(*start_routine)(void *), pointer arg,pointer wrapper);
     static size_t pthread_join(size_t thread, size_t return_val);
+    static size_t pthread_detach(size_t thread);
 
     static void pthread_exit(void *value);
 

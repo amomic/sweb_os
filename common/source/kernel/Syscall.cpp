@@ -12,6 +12,14 @@
 #include "ArchMemory.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5) {
+
+
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+        pthread_exit(reinterpret_cast<void *>(-1ULL));
+    }
+
     size_t return_value = 0;
     if ((syscall_number != sc_sched_yield) &&
         (syscall_number != sc_outline)) // no debug print because these might occur very often
@@ -20,8 +28,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
               syscall_number, arg1, arg1, arg2, arg2, arg3, arg3, arg4, arg4, arg5, arg5);
     }
 
-    switch (syscall_number)
-    {
+    switch (syscall_number) {
         case sc_sched_yield:
             Scheduler::instance()->yield();
             break;
@@ -70,6 +77,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_pthread_join:
             return_value = pthread_join(arg1, arg2);
             break;
+        case sc_pthread_detach:
+            return_value = pthread_detach(arg1);
+            break;
         case sc_fork:
             return_value = fork();
             break;
@@ -77,11 +87,17 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
     }
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+        pthread_exit(reinterpret_cast<void *>(-1ULL));
+    }
+
     return return_value;
 }
 
-void Syscall::pseudols(const char *pathname, char *buffer, size_t size)
-{
+
+void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
     if (buffer && ((size_t) buffer >= USER_BREAK || (size_t) buffer + size > USER_BREAK))
         return;
     if ((size_t) pathname >= USER_BREAK)
@@ -89,16 +105,13 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size)
     VfsSyscall::readdir(pathname, buffer, size);
 }
 
-void Syscall::exit([[maybe_unused]]size_t exit_code)
-{
+void Syscall::exit([[maybe_unused]]size_t exit_code) {
     pthread_exit((void *) -1);
 }
 
-size_t Syscall::write(size_t fd, pointer buffer, size_t size)
-{
+size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
     //WARNING: this might fail if Kernel PageFaults are not handled
-    if ((buffer >= USER_BREAK) || (buffer + size > USER_BREAK))
-    {
+    if ((buffer >= USER_BREAK) || (buffer + size > USER_BREAK)) {
         return -1U;
     }
 
@@ -109,53 +122,43 @@ size_t Syscall::write(size_t fd, pointer buffer, size_t size)
         debug(SYSCALL, "Syscall::write: %.*s\n", (int) size, (char *) buffer);
         kprintf("%.*s", (int) size, (char *) buffer);
         num_written = size;
-    } else
-    {
+    } else {
         num_written = VfsSyscall::write(fd, (char *) buffer, size);
     }
     return num_written;
 }
 
-size_t Syscall::read(size_t fd, pointer buffer, size_t count)
-{
-    if ((buffer >= USER_BREAK) || (buffer + count > USER_BREAK))
-    {
+size_t Syscall::read(size_t fd, pointer buffer, size_t count) {
+    if ((buffer >= USER_BREAK) || (buffer + count > USER_BREAK)) {
         return -1U;
     }
 
     size_t num_read = 0;
 
-    if (fd == fd_stdin)
-    {
+    if (fd == fd_stdin) {
         //this doesn't! terminate a string with \0, gotta do that yourself
         num_read = currentThread->getTerminal()->readLine((char *) buffer, count);
         debug(SYSCALL, "Syscall::read: %.*s\n", (int) num_read, (char *) buffer);
-    } else
-    {
+    } else {
         num_read = VfsSyscall::read(fd, (char *) buffer, count);
     }
     return num_read;
 }
 
-size_t Syscall::close(size_t fd)
-{
+size_t Syscall::close(size_t fd) {
     return VfsSyscall::close(fd);
 }
 
-size_t Syscall::open(size_t path, size_t flags)
-{
-    if (path >= USER_BREAK)
-    {
+size_t Syscall::open(size_t path, size_t flags) {
+    if (path >= USER_BREAK) {
         return -1U;
     }
     return VfsSyscall::open((char *) path, flags);
 }
 
-void Syscall::outline(size_t port, pointer text)
-{
+void Syscall::outline(size_t port, pointer text) {
     //WARNING: this might fail if Kernel PageFaults are not handled
-    if (text >= USER_BREAK)
-    {
+    if (text >= USER_BREAK) {
         return;
     }
     if (port == 0xe9) // debug port
@@ -164,21 +167,18 @@ void Syscall::outline(size_t port, pointer text)
     }
 }
 
-size_t Syscall::createprocess(size_t path, size_t sleep)
-{
+size_t Syscall::createprocess(size_t path, size_t sleep) {
     // THIS METHOD IS FOR TESTING PURPOSES ONLY AND NOT MULTITHREADING SAFE!
     // AVOID USING IT AS SOON AS YOU HAVE AN ALTERNATIVE!
 
     // parameter check begin
-    if (path >= USER_BREAK)
-    {
+    if (path >= USER_BREAK) {
         return -1U;
     }
 
     debug(SYSCALL, "Syscall::createprocess: path:%s sleep:%zd\n", (char *) path, sleep);
     ssize_t fd = VfsSyscall::open((const char *) path, O_RDONLY);
-    if (fd == -1)
-    {
+    if (fd == -1) {
         return -1U;
     }
     VfsSyscall::close(fd);
@@ -195,8 +195,7 @@ size_t Syscall::createprocess(size_t path, size_t sleep)
     return 0;
 }
 
-void Syscall::trace()
-{
+void Syscall::trace() {
     currentThread->printBacktrace();
 }
 
@@ -250,10 +249,14 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
 }
 
 size_t Syscall::pthread_join(size_t joinee_thread, [[maybe_unused]]pointer return_val) {
-
-    UserThread *joiner_thread = reinterpret_cast<UserThread *>(currentThread);
-
+    auto joiner_thread = reinterpret_cast<UserThread *>(currentThread);
     return joiner_thread->getProcess()->joinThread(joinee_thread, return_val);
+}
+
+size_t Syscall::pthread_detach(size_t thread) {
+    kprintf("SYSCALL STARTED!\n");
+    auto detach_thread = reinterpret_cast<UserThread*>(currentThread);
+    return detach_thread->getProcess()->detachThread(thread);
 }
 
 size_t Syscall::pthread_cancel(size_t thread_id) {
@@ -283,7 +286,8 @@ size_t Syscall::pthread_cancel(size_t thread_id) {
             return 0;
         } else {
             debug(CANCEL_ERROR, "Syscall::pthread_cancel: %zu found, but cannot cancelled \n", thread_id);
-
+            currentUserProcess->threads_lock_.release();
+            debug(CANCEL_INFO, "Syscall::pthread_cancel has unlocked threads map\n");
             return -1ULL;
         }
     }
