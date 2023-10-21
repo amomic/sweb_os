@@ -15,7 +15,7 @@ int main()
 {
 
     printf("--------------------------------------\n"
-           "Testing Pthread Create - Size_t params\n");
+           "Testing Pthread Create 4 - Size_t params\n");
 
     pthread_t new_thread;
     size_t param = 5;
