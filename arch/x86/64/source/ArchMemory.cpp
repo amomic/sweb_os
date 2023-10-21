@@ -19,7 +19,7 @@ ArchMemory::ArchMemory() : arch_mem_lock("arch_mem_lock")
   memset(new_pml4, 0, PAGE_SIZE / 2); // should be zero, this is just for safety
 }
 
-ArchMemory::ArchMemory(ArchMemory const &parent) : arch_mem_lock("arch_mem_lock")
+ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 {
   debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!");
 
@@ -28,8 +28,7 @@ ArchMemory::ArchMemory(ArchMemory const &parent) : arch_mem_lock("arch_mem_lock"
 //----------------------------------------PML4--------------------------------------------------------------------------
 
   PageMapLevel4Entry  *parent_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(parent.page_map_level_4_);
-  PageMapLevel4Entry  *child_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(
-          reinterpret_cast<uint64>(getRootOfKernelPagingStructure()));
+  PageMapLevel4Entry  *child_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(getPML4());
 
   memcpy(child_pml4, parent_pml4, PAGE_SIZE);
 
@@ -402,4 +401,9 @@ void ArchMemory::unmapKernelPage(size_t virtual_page)
 PageMapLevel4Entry* ArchMemory::getRootOfKernelPagingStructure()
 {
   return kernel_page_map_level_4;
+}
+
+uint64 ArchMemory::getPML4()
+{
+    return page_map_level_4_;
 }

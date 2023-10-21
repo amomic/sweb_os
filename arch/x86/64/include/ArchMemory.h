@@ -33,7 +33,7 @@ class ArchMemory
     ArchMemory();
     ~ArchMemory();
 
-    ArchMemory(ArchMemory const &parent);
+    ArchMemory(ArchMemory &parent);
     Mutex arch_mem_lock;
 
     uint64 page_map_level_4_;
@@ -126,4 +126,6 @@ class ArchMemory
      * @return True if the table map_ptr is full of zeroes and thus able to be freed.
      */
     template<typename T> static bool checkAndRemove(pointer map_ptr, uint64 index);
+
+    uint64 getPML4();
 };
