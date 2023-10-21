@@ -51,7 +51,8 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         return_val_lock_("UserProcess::return_val_lock_"),
         pid_(process_id),
         threads_alive_(0),
-        fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)), working_dir_(new FileSystemInfo(*parent_process.working_dir_)),
+        fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),
+        working_dir_(new FileSystemInfo(*parent_process.working_dir_)),
         filename_(parent_process.filename_),
         terminal_number_(parent_process.terminal_number_)
 {
@@ -63,6 +64,8 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
     if (!loader_ || !loader_->loadExecutableAndInitProcess())
     {
         debug(USERPROCESS, "Error: loading %s failed!\n", filename_.c_str());
+        // do we need this?
+        parent_process.loader_->arch_memory_.arch_mem_lock.release();
         delete this;
         return;
     }
