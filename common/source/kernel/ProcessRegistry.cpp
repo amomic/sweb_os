@@ -129,8 +129,9 @@ size_t ProcessRegistry::fork()
     debug(PROCESS_REG, "TID= %ld, PID= %ld\n", current_thread->tid_, current_process->pid_);
     size_t pid = progs_running_ + 1;
 
+    process_lock_.release();
     UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
-
+    process_lock_.acquire();
 
     process_map_.push_back(ustl::make_pair(pid, current_process));
 
