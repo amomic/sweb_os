@@ -107,7 +107,8 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
 }
 
 void Syscall::exit(size_t exit_code) {
-    pthread_exit((void *) exit_code);
+    debug(SYSCALL, "Syscall::exit: %zu\n", exit_code);
+    pthread_exit((void *) -1);
 }
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
