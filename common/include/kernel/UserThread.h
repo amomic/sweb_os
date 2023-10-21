@@ -49,6 +49,8 @@ public:
 
     size_t getJoinTID();
 
+    Mutex state_join_lock_;
+
     // Thread attributes
     DETATCH_STATE type_of_join_ = DETATCH_STATE::JOINABLE;
 
