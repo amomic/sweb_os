@@ -71,6 +71,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
                        Thread(fs_info, filename, Thread::USER_THREAD),
                        process_(parent_process),
                        tid_(thread_id),
+                       state_join_lock_("UserThread::state_join_lock_"),
                        join_condition_(&parent_process->return_val_lock_, "UserThread::join_condition_"),
                        terminal_number_(terminal_number){
 
