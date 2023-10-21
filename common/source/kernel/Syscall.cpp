@@ -246,7 +246,9 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     current_thread->getProcess()->threads_lock_.release();
     debug(SYSCALL, "line before kill in pexit");
 
+    current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
     current_thread->process_->unmapPage();
+    current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
 
     current_thread->kill();
 }
