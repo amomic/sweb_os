@@ -59,11 +59,11 @@ public:
     UserThread *waited_by_ = nullptr;
 
     Condition join_condition_;
+    size_t virtual_pages_{};
 
 private:
     ustl::string filename_;
     FileSystemInfo *fs_info_{};
     uint32 terminal_number_;
-    size_t virtual_pages_{};
     size_t join_TID;
 };
