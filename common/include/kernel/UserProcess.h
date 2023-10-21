@@ -42,6 +42,7 @@ public:
     Loader* getLoader();
 
     void CleanThreads(size_t thread);
+    void unmapPage();
 
 private:
     int32 fd_;
