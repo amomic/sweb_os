@@ -24,6 +24,7 @@ public:
     UserThread *createThread(size_t *thread, size_t *attr, void *(*start_routine)(void *), void *wrapper, uint64 argc, size_t args);
     size_t joinThread(size_t thread, pointer return_val);
     size_t detachThread(size_t thread);
+    size_t exec(char *path);
 
     size_t threads_counter_for_id_ = 0;
     UserProcess* process_;
@@ -50,6 +51,7 @@ private:
     ustl::string filename_;
     FileSystemInfo *fs_info_;
     uint32 terminal_number_;
+
 
 
 };
