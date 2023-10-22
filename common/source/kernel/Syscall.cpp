@@ -84,6 +84,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_fork:
             return_value = fork();
             break;
+        case sc_execv:
+            return_value = execv(arg1, arg2);
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -362,6 +365,35 @@ size_t Syscall::fork()
 {
     debug(SYSCALL, "Syscall::fork\n");
     return ProcessRegistry::instance()->fork();
+}
+
+size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
+{
+    char* path_name = (char*)path;
+
+    auto path_len = strlen(path_name);
+
+    if((size_t)path_name >= USER_BREAK ||
+       (size_t)path_name == NULL ||
+       argv >= USER_BREAK)
+    {
+        debug(SYSCALL, "[Exec] Wrong address!");
+        return -1U;
+    }
+
+    if(path_len > 256)
+    {
+        debug(SYSCALL, "[Exec] Path length too long!");
+        return -1U;
+    }
+
+    // Do we need anything else here?
+
+    UserProcess* user_process = ((UserThread*)currentThread)->getProcess();
+
+    size_t ret = user_process->exec(path_name);
+
+    return ret;
 }
 
 
