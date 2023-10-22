@@ -327,3 +327,69 @@ void UserProcess::unmapPage() {
     currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
 }
 
+size_t UserProcess::exec(char* path){
+
+    debug(USERPROCESS, "[Exec] In UserProcess!");
+
+    size_t path_len = strlen(path);
+
+    if((size_t)path == NULL ||
+            (size_t)path >= USER_BREAK)
+    {
+        debug(USERPROCESS, "[Exec] Path wrong in UserProcess!");
+        return -1;
+    }
+
+    if(path_len >= 256)
+    {
+        debug(USERPROCESS, "[Exec] Path len too big!");
+        return -1;
+    }
+
+    //Copy pathname
+    char copy_array[256];
+    memcpy(copy_array, path, path_len);
+    copy_array[path_len] = 0;
+
+    char* kernel_path = new char[path_len + 1];
+    memcpy(kernel_path, copy_array, path_len);
+    kernel_path[path_len] = 0;
+
+    //Create a new thread
+    UserThread* user_thread = (UserThread*)currentThread;
+
+    //Set old and new fd
+    int32 new_fd = VfsSyscall::open(kernel_path, O_RDONLY);
+    int32 old_fd = fd_;
+
+    if(new_fd == -1)
+    {
+        debug(USERPROCESS, "[Exec] Couldn't open new fd!");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        return -1U;
+    }
+
+    //Set old and new loader
+    Loader* old_loader = loader_;
+    Loader* new_loader = new Loader(new_fd);
+
+    if(!new_loader->loadExecutableAndInitProcess())
+    {
+        debug(USERPROCESS, "[Exec] Creation of new loader failed!");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        delete new_loader;
+        return -1U;
+    }
+
+    //TODO create a function for deletion of all threads except the calling thread
+    //TODO delete this if
+    if(old_fd == NULL || old_loader == NULL || user_thread == NULL)
+    {
+        debug(USERPROCESS, "This is just to avoid 'unused variable' error");
+    }
+
+    return 0;
+}
+
