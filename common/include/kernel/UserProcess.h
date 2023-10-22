@@ -44,6 +44,7 @@ public:
 
     void CleanThreads(size_t thread);
     void unmapPage();
+    void deleteAllThreadsExceptCurrent(UserThread* current_thread);
 
 private:
     int32 fd_;
