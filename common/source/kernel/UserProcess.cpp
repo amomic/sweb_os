@@ -52,19 +52,23 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         pid_(process_id),
         threads_alive_(0),
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),
-        working_dir_(new FileSystemInfo(*parent_process.working_dir_)),
         filename_(parent_process.filename_),
         terminal_number_(parent_process.terminal_number_)
 {
+    debug(USERPROCESS, "Im in fork copy constructor!\n");
+
     ProcessRegistry::instance()->processStart(); //should also be called if you fork a process
 
     if (fd_ >= 0)
+    {
+        debug(USERPROCESS, "pid -> %lu \n", parent_process.pid_);
         loader_ = new Loader(*parent_process.loader_, fd_);
+    }
 
     if (!loader_ || !loader_->loadExecutableAndInitProcess())
     {
         debug(USERPROCESS, "Error: loading %s failed!\n", filename_.c_str());
-        // do we need this?
+        // TODO do we need this?
         parent_process.loader_->arch_memory_.arch_mem_lock.release();
         delete this;
         return;

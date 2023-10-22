@@ -22,6 +22,7 @@ Loader::Loader(Loader& loader, ssize_t fd) :
         program_binary_lock_("Loader::program_binary_lock_"),
         userspace_debug_info_(0)
 {
+    debug(LOADER, "In loader copy constructor!\n");
 }
 
 Loader::~Loader()
