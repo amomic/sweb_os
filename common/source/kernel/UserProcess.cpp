@@ -355,7 +355,7 @@ size_t UserProcess::exec(char* path){
     memcpy(kernel_path, copy_array, path_len);
     kernel_path[path_len] = 0;
 
-    //Create a new thread
+    //Get a thread
     UserThread* user_thread = (UserThread*)currentThread;
 
     //Set old and new fd
@@ -383,13 +383,89 @@ size_t UserProcess::exec(char* path){
         return -1U;
     }
 
-    //TODO create a function for deletion of all threads except the calling thread
+    //A function for deleting all threads but current
+    //deleteAllThreadsExceptCurrent(user_thread);
+
+    while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
+    {
+        Scheduler::instance()->yield();
+    }
+
     //TODO delete this if
     if(old_fd == NULL || old_loader == NULL || user_thread == NULL)
     {
         debug(USERPROCESS, "This is just to avoid 'unused variable' error");
     }
 
+    loader_ = new_loader;
+    currentThread->loader_ = new_loader;
+
+    ArchThreads::setAddressSpace(currentThread, loader_->arch_memory_);
+    Scheduler::instance()->yield();
+
+    fd_ = new_fd;
+    VfsSyscall::close(old_fd);
+    delete old_loader;
+
+    //Clear retval map
+    threads_lock_.acquire();
+    thread_retval_map.clear();
+    threads_lock_.release();
+
+    //set new tid
+    threads_lock_.acquire();
+    threads_counter_for_id_ = threads_counter_for_id_ + 1;
+    size_t new_tid = threads_counter_for_id_;
+    threads_lock_.release();
+
+    //TODO set RDI, RSI registers
+
+    //new thread
+    UserThread* new_user_thread = new UserThread(filename_, fs_info_, terminal_number_, this,
+                                                 NULL, loader_->getEntryFunction(), new_tid, 0, NULL);
+
+    debug(USERPROCESS, "[Exec] Created a new thread!");
+
+    // set new thread tid
+    new_user_thread->setTID(new_tid);
+
+    //add new thread and tid to map
+    threads_lock_.acquire();
+    threads_map_.push_back(ustl::make_pair(new_tid, new_user_thread));
+    threads_alive_++;
+    threads_lock_.release();
+
+    debug(USERPROCESS, "[Exec] New process created!");
+
+    //add new thread
+    Scheduler::instance()->addNewThread(new_user_thread);
+
+    //delete old kernel path and kill old thread
+    delete[] kernel_path;
+    user_thread->kill();
     return 0;
 }
 
+/*
+void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
+{
+    ustl::map<size_t, Thread*>::iterator it;
+
+    threads_lock_.acquire();
+
+    for(it = threads_map_.begin(); it != threads_map_.end(); it++)
+    {
+        if(it->second == currentThread)
+        {
+            //don't delete this thread
+        }
+        else
+        {
+            //TODO how to set the thread to be canceled?
+            //threads_map_.at(it->first)
+
+        }
+    }
+    threads_lock_.release();
+}
+*/
