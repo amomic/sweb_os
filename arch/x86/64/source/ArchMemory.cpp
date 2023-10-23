@@ -21,7 +21,12 @@ ArchMemory::ArchMemory() : arch_mem_lock("arch_mem_lock")
 
 ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 {
-  debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!");
+  page_map_level_4_ = PageManager::instance()->allocPPN();
+  PageMapLevel4Entry* new_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
+  memcpy((void*) new_pml4, (void*) kernel_page_map_level_4, PAGE_SIZE);
+  memset(new_pml4, 0, PAGE_SIZE / 2); // should be zero, this is just for safety
+
+  debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!\n");
 
   arch_mem_lock.acquire();
 
@@ -32,7 +37,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
   memcpy(child_pml4, parent_pml4, PAGE_SIZE);
 
-  debug(A_MEMORY, "[Fork] Memory copy for PML4 done!");
+  debug(A_MEMORY, "[Fork] Memory copy for PML4 done!\n");
 
   //divide by 2 to free only the lower half
   for(uint64 pml4i = 0; pml4i < PAGE_MAP_LEVEL_4_ENTRIES / 2; pml4i++)
@@ -44,7 +49,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
           child_pml4[pml4i] = parent_pml4[pml4i];
 
-          debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!");
+          debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!\n");
 
 //----------------------------------------PDPT--------------------------------------------------------------------------
 
@@ -53,7 +58,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
           memcpy(child_pdpt, parent_pdpt, PAGE_SIZE);
 
-          debug(A_MEMORY, "[Fork] Memory copy for PDPT done!");
+          debug(A_MEMORY, "[Fork] Memory copy for PDPT done!\n");
 
           for(uint64 pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++)
           {
@@ -64,7 +69,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                   child_pdpt[pdpti] = parent_pdpt[pdpti];
 
-                  debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!");
+                  debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!\n");
 
 //------------------------------------------PD--------------------------------------------------------------------------
 
@@ -73,7 +78,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                   memcpy(child_pd, parent_pd, PAGE_SIZE);
 
-                  debug(A_MEMORY, "[Fork] Memory copy for PD done!");
+                  debug(A_MEMORY, "[Fork] Memory copy for PD done!\n");
 
                   for(uint64 pdi = 0; pdi < PAGE_DIR_ENTRIES; pdi++)
                   {
@@ -84,7 +89,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                           child_pd[pdi] = parent_pd[pdi];
 
-                          debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!");
+                          debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
 //------------------------------------------PT--------------------------------------------------------------------------
 
@@ -93,7 +98,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                           memcpy(child_pt, parent_pt, PAGE_SIZE);
 
-                          debug(A_MEMORY, "[Fork] Memory copy for PT done!");
+                          debug(A_MEMORY, "[Fork] Memory copy for PT done!\n");
 
                           for(uint64 pti = 0; pti < PAGE_TABLE_ENTRIES; pti++)
                           {
@@ -104,7 +109,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                                   child_pt[pti] = parent_pt[pti];
 
-                                  debug(A_MEMORY, "[Fork] PT assigned to child.");
+                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
                           }
                       }
@@ -115,7 +120,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
   }
     arch_mem_lock.release();
 
-    debug(A_MEMORY, "[Fork] Arch Memory copy constructor finished!");
+    debug(A_MEMORY, "[Fork] Arch Memory copy constructor finished!\n");
 }
 
 
