@@ -25,3 +25,5 @@
 #define sc_pthread_setcanceltype 305
 #define sc_pthread_detach 306
 
+#define sigsegv 11
+
