@@ -61,6 +61,8 @@ public:
     Condition join_condition_;
     size_t virtual_pages_{};
 
+    void makeAsynchronousCancel();
+
 private:
     ustl::string filename_;
     FileSystemInfo *fs_info_{};

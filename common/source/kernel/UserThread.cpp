@@ -146,3 +146,9 @@ size_t UserThread::getJoinTID()
 {
     return join_TID;
 }
+
+void UserThread::makeAsynchronousCancel(){
+    thread_cancel_type_ = UserThread::ASYNCHRONOUS;
+    thread_cancel_state_ = UserThread::ENABLED;
+    thread_cancellation_state_ = UserThread::ISCANCELED;
+}
