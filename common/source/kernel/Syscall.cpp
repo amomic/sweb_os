@@ -364,7 +364,9 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype) {
 size_t Syscall::fork()
 {
     debug(SYSCALL, "Syscall::fork\n");
-    return ProcessRegistry::instance()->fork();
+    ProcessRegistry::instance()->fork();
+
+    return 0;
 }
 
 size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
