@@ -399,10 +399,3 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
     return ret;
 }
 
-int Syscall::signal(void* handler)
-{
-   debug(SYSCALL, "\n\n\n Information from handler: %p \n\n\n", handler);
-   return 0;
-}
-
-
