@@ -117,8 +117,12 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                               {
                                   //set cow bit
                                   //set writable bit
-
-                                  child_pt[pti] = parent_pt[pti];
+                                  end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
+                                  child_pt[pti].page_ppn = end_level_;
+                                  child_pt[pti].present = 1;
+                                  void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
+                                  void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
+                                  memcpy(child_,parent_, PAGE_SIZE);
 
                                   debug(A_MEMORY, "[Fork] PT assigned to child.");
                               }
