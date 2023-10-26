@@ -43,6 +43,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1;
     }
 
+
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
     ArchThreads::createUserRegisters(user_registers_, wrapper,
@@ -87,17 +88,13 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
 
     bool vpn_mapped = -1;
 
+    if(((UserThread*)currentThread)->process_->threads_map_.find(tid_))
+    {
+        tid_++;
+    }
 
-    if(tid_ == 0)
-    {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, stack_ppn , 1);
-        virtual_pages_ = USER_BREAK / PAGE_SIZE - 1;
-    }
-    else
-    {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid_) - 1, stack_ppn , 1);
-        virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid_) - 1;
-    }
+    vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * (tid_)) - 1, stack_ppn , 1);
+    virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid_) - 1;
 
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
