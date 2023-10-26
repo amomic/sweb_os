@@ -22,13 +22,13 @@ ArchMemory::ArchMemory() : arch_mem_lock("arch_mem_lock")
 ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 {
 
+    debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!\n");
 
     page_map_level_4_ = PageManager::instance()->allocPPN();
     PageMapLevel4Entry* new_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
     memcpy((void*) new_pml4, (void*) kernel_page_map_level_4, PAGE_SIZE);
     memset(new_pml4, 0, PAGE_SIZE / 2); // should be zero, this is just for safety
 
-    debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!\n");
   arch_mem_lock.acquire();
 
 //----------------------------------------PML4--------------------------------------------------------------------------
@@ -48,7 +48,11 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           //set cow bit
           //set writable bit
 
-          child_pml4[pml4i] = parent_pml4[pml4i];
+          arch_mem_lock.release();
+          pdpt_ = PageManager::instance()->allocPPN();
+          arch_mem_lock.acquire();
+          child_pml4[pml4i].page_ppn = pdpt_;
+          child_pml4[pml4i].present = 1;
 
           debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!");
 
@@ -67,8 +71,11 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
               {
                   //set cow bit
                   //set writable bit
-
-                  child_pdpt[pdpti] = parent_pdpt[pdpti];
+                  arch_mem_lock.release();
+                  pd_ = PageManager::instance()->allocPPN();
+                  arch_mem_lock.acquire();
+                  child_pdpt[pdpti].pd.page_ppn = pd_;
+                  child_pdpt[pdpti].pd.present = 1;
 
                   debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!");
 
@@ -87,8 +94,11 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                       {
                           //set cow bit
                           //set writable bit
-
-                          child_pd[pdi] = parent_pd[pdi];
+                          arch_mem_lock.release();
+                          pt_ = PageManager::instance()->allocPPN();
+                          arch_mem_lock.acquire();
+                          child_pd[pdi].pt.page_ppn = pt_;
+                          child_pd[pdi].pt.present = 1;
 
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!");
 
