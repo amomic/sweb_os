@@ -21,8 +21,14 @@ ArchMemory::ArchMemory() : arch_mem_lock("arch_mem_lock")
 
 ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 {
-  debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!");
 
+
+    page_map_level_4_ = PageManager::instance()->allocPPN();
+    PageMapLevel4Entry* new_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
+    memcpy((void*) new_pml4, (void*) kernel_page_map_level_4, PAGE_SIZE);
+    memset(new_pml4, 0, PAGE_SIZE / 2); // should be zero, this is just for safety
+
+    debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!\n");
   arch_mem_lock.acquire();
 
 //----------------------------------------PML4--------------------------------------------------------------------------
