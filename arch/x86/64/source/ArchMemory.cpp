@@ -52,8 +52,6 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           pdpt_ = PageManager::instance()->allocPPN();
           arch_mem_lock.acquire();
           child_pml4[pml4i].page_ppn = pdpt_;
-          child_pml4[pml4i].present = 1;
-
           debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!");
 
 //----------------------------------------PDPT--------------------------------------------------------------------------
@@ -62,6 +60,8 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           PageDirPointerTableEntry *child_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(child_pml4[pml4i].page_ppn);
 
           memcpy(child_pdpt, parent_pdpt, PAGE_SIZE);
+          child_pml4[pml4i].present = 1;
+
 
           debug(A_MEMORY, "[Fork] Memory copy for PDPT done!");
 
@@ -75,7 +75,6 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   pd_ = PageManager::instance()->allocPPN();
                   arch_mem_lock.acquire();
                   child_pdpt[pdpti].pd.page_ppn = pd_;
-                  child_pdpt[pdpti].pd.present = 1;
 
                   debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!");
 
@@ -85,6 +84,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   PageDirEntry *child_pd = (PageDirEntry*) getIdentAddressOfPPN(child_pdpt[pdpti].pd.page_ppn);
 
                   memcpy(child_pd, parent_pd, PAGE_SIZE);
+                  child_pdpt[pdpti].pd.present = 1;
 
                   debug(A_MEMORY, "[Fork] Memory copy for PD done!");
 
@@ -98,8 +98,6 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           pt_ = PageManager::instance()->allocPPN();
                           arch_mem_lock.acquire();
                           child_pd[pdi].pt.page_ppn = pt_;
-                          child_pd[pdi].pt.present = 1;
-
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!");
 
 //------------------------------------------PT--------------------------------------------------------------------------
@@ -108,6 +106,8 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           PageTableEntry *child_pt = (PageTableEntry*) getIdentAddressOfPPN(child_pd[pdi].pt.page_ppn);
 
                           memcpy(child_pt, parent_pt, PAGE_SIZE);
+                          child_pd[pdi].pt.present = 1;
+
 
                           debug(A_MEMORY, "[Fork] Memory copy for PT done!");
 
@@ -119,10 +119,11 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   //set writable bit
                                   end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
                                   child_pt[pti].page_ppn = end_level_;
-                                  child_pt[pti].present = 1;
                                   void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
                                   void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
                                   memcpy(child_,parent_, PAGE_SIZE);
+                                  child_pt[pti].present = 1;
+                                  parent_pt[pti].present = 1;
 
                                   debug(A_MEMORY, "[Fork] PT assigned to child.");
                               }

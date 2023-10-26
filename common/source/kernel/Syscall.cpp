@@ -226,7 +226,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     //to update (freeing resources, joining etc)
     UserThread *current_thread = (UserThread *) currentThread;
     UserProcess *current_process = current_thread->getProcess();
-    debug(SYSCALL, "enterinh pthread exit ! \n");
+    debug(SYSCALL, "entering pthread exit ! \n");
     current_process->return_val_lock_.acquire();
 
     // Store return value
