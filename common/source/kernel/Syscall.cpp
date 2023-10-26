@@ -87,6 +87,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_execv:
             return_value = execv(arg1, arg2);
             break;
+        case sc_sc_signal:
+            return_value = signal(reinterpret_cast<void *>(arg1));
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -397,3 +400,11 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
 }
 
 
+int Syscall::signal(void* handler)
+{
+    UserProcess* user_process = ((UserThread*)currentThread)->getProcess();
+    user_process->handler_ = reinterpret_cast<size_t>(handler);
+    debug(SYSCALL, "information: %zu of signla", user_process->handler_);
+
+    return 0;
+}

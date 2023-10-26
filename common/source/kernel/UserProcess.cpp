@@ -387,9 +387,8 @@ size_t UserProcess::exec(char* path){
     //TODO delete this if
     if(old_fd == NULL || old_loader == NULL || user_thread == NULL)
     {
-        debug(USERPROCESS, "This is just to avoid 'unused variable' error");
+        debug(USERPROCESS, "This is just to avoid 'unused variable' error\n");
     }
 
     return 0;
 }
-

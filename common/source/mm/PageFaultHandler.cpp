@@ -7,6 +7,7 @@
 #include "Loader.h"
 #include "Syscall.h"
 #include "ArchThreads.h"
+#include "UserProcess.h"
 extern "C" void arch_contextSwitch();
 
 const size_t PageFaultHandler::null_reference_check_border_ = PAGE_SIZE;
@@ -65,11 +66,26 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
   }
   else
   {
+
+      debug(PAGEFAULT, "haldner is %zu",((UserThread*)currentThread)->process_->handler_);
     // the page-fault seems to be faulty, print out the thread stack traces
     ArchThreads::printThreadRegisters(currentThread, true);
     currentThread->printBacktrace(true);
     if (currentThread->loader_)
-      Syscall::exit(9999);
+    {
+        if(((UserThread*)currentThread)->process_->handler_)
+        {
+            debug(PAGEFAULT, "haldner is %zu",((UserThread*)currentThread)->process_->handler_);
+            currentThread->user_registers_->rip = ((UserThread*)currentThread)->process_->handler_;
+            currentThread->user_registers_->rdi =  11;
+            currentThread->user_registers_->rsi = address;
+            currentThread->switch_to_userspace_ = true;
+            return;
+
+        }
+    }
+
+
     else
       currentThread->kill();
   }

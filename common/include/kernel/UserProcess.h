@@ -3,6 +3,7 @@
 #include "Thread.h"
 #include "UserThread.h"
 #include "umap.h"
+#include "syscall-definitions.h"
 
 class UserThread;
 class UserProcess
@@ -39,11 +40,16 @@ public:
 
     size_t virtual_pages_;
     size_t threads_alive_;
+    int signum_;
+    void* infos_;
+    size_t handler_;
 
     Loader* getLoader();
 
     void CleanThreads(size_t thread);
     void unmapPage();
+
+    void handler(int signum, void *infos);
 
 private:
     int32 fd_;
@@ -51,7 +57,6 @@ private:
     ustl::string filename_;
     FileSystemInfo *fs_info_;
     uint32 terminal_number_;
-
 
 
 };
