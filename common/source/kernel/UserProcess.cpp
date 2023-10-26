@@ -387,8 +387,8 @@ size_t UserProcess::exec(char* path){
         return -1U;
     }
 
-    //A function for deleting all threads but current
-    //deleteAllThreadsExceptCurrent(user_thread);
+    // TODO A function for deleting all threads but current
+    deleteAllThreadsExceptCurrent(user_thread);
 
     while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
     {
@@ -450,26 +450,23 @@ size_t UserProcess::exec(char* path){
     return 0;
 }
 
-/*
+
 void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
 {
+    auto calling_thread = reinterpret_cast<UserThread*>(current_thread);
+    auto calling_process = calling_thread->getProcess();
+
     ustl::map<size_t, Thread*>::iterator it;
 
-    threads_lock_.acquire();
+   calling_process->threads_lock_.acquire();
 
-    for(it = threads_map_.begin(); it != threads_map_.end(); it++)
-    {
-        if(it->second == currentThread)
-        {
-            //don't delete this thread
-        }
-        else
-        {
-            //TODO how to set the thread to be canceled?
-            //threads_map_.at(it->first)
-
-        }
+    for(it = calling_process->threads_map_.begin(); it !=calling_process->threads_map_.end(); it++){
+        if(it->second == calling_thread)
+            continue;
+        auto handler = reinterpret_cast<UserThread*>(it->second);
+        handler->makeAsynchronousCancel();
+        handler->getProcess()->unmapPage();
     }
-    threads_lock_.release();
+   calling_process->threads_lock_.release();
 }
-*/
+
