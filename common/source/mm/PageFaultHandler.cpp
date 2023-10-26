@@ -69,19 +69,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
     ArchThreads::printThreadRegisters(currentThread, true);
     currentThread->printBacktrace(true);
     if (currentThread->loader_)
-    {   /*
-        if(((UserProcess*)currentThread)->handler_)
-        {
-            currentThread->user_registers_->rip = ((UserProcess*)currentThread)->handler_;
-            currentThread->user_registers_->rdi = 11;
-            currentThread->user_registers_->rsi = address;
-            currentThread->switch_to_userspace_ = true;
-            return;
-        }
-        else
-        {*/
-            Syscall::exit(9999);
-        //}
+    {
+        Syscall::exit(9999);
     }
     else
       currentThread->kill();
