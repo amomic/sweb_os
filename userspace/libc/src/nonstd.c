@@ -8,11 +8,6 @@ int createprocess(const char* path, int sleep)
   return __syscall(sc_createprocess, (long) path, sleep, 0x00, 0x00, 0x00);
 }
 
-unsigned long signal(void* handler)
-{
-    return __syscall(sigsegv, (size_t)&handler, 0x00, 0x00, 0x00, 0x00);
-}
-
 extern int main();
 
 void _start()

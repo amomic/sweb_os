@@ -32,6 +32,5 @@ class Syscall
 
     static size_t execv(size_t path, size_t argv);
 
-    static int signal(void *handler);
 };
 

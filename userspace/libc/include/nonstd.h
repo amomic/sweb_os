@@ -15,7 +15,6 @@ extern "C" {
  *
  */ 
 extern int createprocess(const char* path, int sleep);
-extern unsigned long signal(void* handler);
 
 #ifdef __cplusplus
 }
