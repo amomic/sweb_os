@@ -250,7 +250,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     debug(SYSCALL, "line before kill in pexit");
 
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
-    if(current_process->threads_alive_> 1)
+    if(current_thread->tid_ != 0)
         current_thread->process_->unmapPage();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
 
@@ -365,8 +365,8 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype) {
 size_t Syscall::fork()
 {
     debug(SYSCALL, "Syscall::fork\n");
-     ProcessRegistry::instance()->fork();
-     return 0;
+    size_t ret =  ProcessRegistry::instance()->fork();
+    return ret;
 }
 
 size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)

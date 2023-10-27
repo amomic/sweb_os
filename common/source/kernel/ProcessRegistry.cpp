@@ -88,8 +88,7 @@ void ProcessRegistry::Run()
 void ProcessRegistry::processExit()
 {
   counter_lock_.acquire();
-  progs_running_--;
-  if (progs_running_ == 0 || progs_running_ == 1)
+  if (--progs_running_ == 0)
     all_processes_killed_.signal();
 
   counter_lock_.release();
@@ -130,12 +129,10 @@ size_t ProcessRegistry::fork()
     debug(PROCESS_REG, "TID= %ld, PID= %ld\n", current_thread->tid_, current_process->pid_);
 
     process_lock_.release();
-    process_count_++;
-    size_t pid = process_count_;
-    UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
+    UserProcess* new_process = new UserProcess(*current_process, *current_thread, progs_running_);
     process_lock_.acquire();
 
-    process_map_.push_back(ustl::make_pair(pid, current_process));
+    process_map_.push_back(ustl::make_pair(progs_running_, current_process));
 
     if(new_process == nullptr)
     {
@@ -145,5 +142,5 @@ size_t ProcessRegistry::fork()
 
     process_lock_.release();
 
-    return pid;
+    return progs_running_;
 }
