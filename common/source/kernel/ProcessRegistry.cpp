@@ -88,8 +88,8 @@ void ProcessRegistry::Run()
 void ProcessRegistry::processExit()
 {
   counter_lock_.acquire();
-
-  if (--progs_running_ == 0)
+  progs_running_--;
+  if (progs_running_ == 0 || progs_running_ == 1)
     all_processes_killed_.signal();
 
   counter_lock_.release();
@@ -114,6 +114,7 @@ void ProcessRegistry::createProcess(const char* path) {
     UserProcess *process = new UserProcess(path, new FileSystemInfo(*working_dir_));
     if (process) {
         debug(PROCESS_REG, "create process %s\n", path);
+        process_count_++;
     }
 
 }
@@ -127,9 +128,10 @@ size_t ProcessRegistry::fork()
     UserThread *current_thread = (UserThread*)currentThread;
     UserProcess *current_process = current_thread->getProcess();
     debug(PROCESS_REG, "TID= %ld, PID= %ld\n", current_thread->tid_, current_process->pid_);
-    size_t pid = progs_running_ + 1;
 
     process_lock_.release();
+    process_count_++;
+    size_t pid = process_count_;
     UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
     process_lock_.acquire();
 
@@ -141,7 +143,6 @@ size_t ProcessRegistry::fork()
         return -1;
     }
 
-    progs_running_++;
     process_lock_.release();
 
     return pid;
