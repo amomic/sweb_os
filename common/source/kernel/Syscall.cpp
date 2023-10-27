@@ -229,7 +229,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     //to update (freeing resources, joining etc)
     UserThread *current_thread = (UserThread *) currentThread;
     UserProcess *current_process = current_thread->getProcess();
-    debug(SYSCALL, "enterinh pthread exit ! \n");
+    debug(SYSCALL, "entering pthread exit ! \n");
     current_process->return_val_lock_.acquire();
 
     // Store return value
@@ -250,7 +250,8 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     debug(SYSCALL, "line before kill in pexit");
 
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
-    current_thread->process_->unmapPage();
+    if(current_process->threads_alive_> 1)
+        current_thread->process_->unmapPage();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
 
     current_thread->kill();
@@ -364,9 +365,8 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype) {
 size_t Syscall::fork()
 {
     debug(SYSCALL, "Syscall::fork\n");
-    ProcessRegistry::instance()->fork();
-
-    return 0;
+     ProcessRegistry::instance()->fork();
+     return 0;
 }
 
 size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)

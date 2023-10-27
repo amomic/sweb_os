@@ -39,6 +39,7 @@ public:
 
     size_t virtual_pages_;
     size_t threads_alive_;
+    size_t forked_threads_alive_;
 
     Loader* getLoader();
 
