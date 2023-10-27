@@ -51,7 +51,6 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
 
-
     if(start_routine)
     {
         user_registers_->rdi = reinterpret_cast<uint64>(start_routine);
