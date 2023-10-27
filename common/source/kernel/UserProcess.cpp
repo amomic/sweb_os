@@ -50,7 +50,7 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         pages_lock_("UserProcess::pages_lock_"),
         return_val_lock_("UserProcess::return_val_lock_"),
         pid_(process_id),
-        threads_alive_(0),
+        forked_threads_alive_(0),
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),
         filename_(parent_process.filename_),
         terminal_number_(parent_process.terminal_number_)
@@ -81,7 +81,7 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
     threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(user_thread->tid_,user_thread));
-    threads_alive_++;
+    forked_threads_alive_++;
     threads_lock_.release();
 
     ProcessRegistry::instance()->process_lock_.acquire();
@@ -151,6 +151,7 @@ void UserProcess::CleanThreads(size_t thread)
         threads_map_.erase(thread);
         delete this;
     }
+
 }
 
 size_t UserProcess::joinThread(size_t thread, pointer return_val) {
