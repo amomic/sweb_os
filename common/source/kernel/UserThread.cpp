@@ -77,7 +77,6 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
         terminal_number_(terminal_number){
 
     loader_ = process_->getLoader();
-    size_t stack_ppn= PageManager::instance()->allocPPN();
 
     this->setTID(thread_id);
 

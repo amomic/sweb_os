@@ -45,7 +45,7 @@ class ProcessRegistry : public Thread
     Mutex process_lock_;
 
     ustl::map<size_t, UserProcess*> process_map_;
-    size_t process_count_ = 0;
+    size_t process_count_{0};
 private:
 
     char const **progs_;
