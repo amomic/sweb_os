@@ -10,6 +10,7 @@
 #include "ArchThreads.h"
 #include "offsets.h"
 #include "Scheduler.h"
+#include "Syscall.h"
 #include "UserThread.h"
 
 UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number) :
@@ -460,7 +461,8 @@ size_t UserProcess::exec(char* path){
 
     //delete old kernel path and kill old thread
     delete[] kernel_path;
-    user_thread->kill();
+    user_thread->user_registers_->rip = (size_t) (Syscall::pthread_exit);
+
     return 0;
 }
 
@@ -479,7 +481,9 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
             continue;
         auto handler = reinterpret_cast<UserThread*>(it->second);
         handler->makeAsynchronousCancel();
-        handler->getProcess()->unmapPage();
+        calling_process->threads_lock_.release();
+        handler->user_registers_->rip = (size_t) (Syscall::pthread_exit);
+        calling_process->threads_lock_.acquire();
     }
    calling_process->threads_lock_.release();
 }
