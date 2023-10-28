@@ -38,6 +38,7 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
     threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(0,user_thread));
+    ProcessRegistry::instance()->process_map_.push_back(ustl::make_pair(process_count_, this));
     threads_alive_++;
     threads_lock_.release();
 
@@ -50,12 +51,11 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         pages_lock_("UserProcess::pages_lock_"),
         return_val_lock_("UserProcess::return_val_lock_"),
         pid_(process_id),
-        forked_threads_alive_(0),
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),
         filename_(parent_process.filename_),
         terminal_number_(parent_process.terminal_number_)
 {
-    debug(USERPROCESS, "Im in fork copy constructor!\n");
+    debug(USERPROCESS, "Im in userprocess copy constructor!\n");
 
     ProcessRegistry::instance()->processStart(); //should also be called if you fork a process
 
@@ -75,13 +75,19 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
     }
 
 
-    UserThread *user_thread = new  UserThread(current_thread, this, terminal_number_, filename_, fs_info_, current_thread.tid_);
+    size_t new_tid = threads_map_.size() + 1;
+    while(threads_map_.find(new_tid))
+    {
+        new_tid = new_tid+1;
+    }
+
+    UserThread *user_thread = new  UserThread(current_thread, this, terminal_number_, filename_, fs_info_, new_tid );
 
     assert(user_thread && "thread creation failed for forked process \n");
     threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(user_thread->tid_,user_thread));
-    forked_threads_alive_++;
+    threads_alive_++;
     threads_lock_.release();
 
     ProcessRegistry::instance()->process_lock_.acquire();
@@ -330,7 +336,11 @@ size_t UserProcess::detachThread(size_t thread) {
 void UserProcess::unmapPage() {
 
     auto currenThread = reinterpret_cast<UserThread*>(currentThread);
-    currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
+    size_t valid = currenThread->loader_->arch_memory_.checkAddressValid(currenThread->virtual_pages_*PAGE_SIZE);
+    if(valid)
+        currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
+    else
+        return;
 }
 
 size_t UserProcess::exec(char* path){
