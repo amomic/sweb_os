@@ -38,7 +38,8 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
     threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(0,user_thread));
-    ProcessRegistry::instance()->process_map_.push_back(ustl::make_pair(process_count_, this));
+    pid_ = process_count_;
+    ProcessRegistry::instance()->process_map_.push_back(ustl::make_pair(pid_, this));
     threads_alive_++;
     threads_lock_.release();
 
@@ -101,6 +102,7 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
 UserProcess::~UserProcess()
 {
     assert(Scheduler::instance()->isCurrentlyCleaningUp());
+    ProcessRegistry::instance()->process_map_.erase(pid_);
     delete loader_;
     loader_ = 0;
 
