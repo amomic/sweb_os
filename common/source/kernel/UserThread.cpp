@@ -85,7 +85,6 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
                                      (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid_*PAGE_SIZE),
                                      getKernelStackStartPointer());
 
-    // do we need this?
     memcpy(this->user_registers_, currentThread->user_registers_, sizeof(ArchThreadRegisters));
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);

@@ -36,17 +36,17 @@ public:
     Mutex return_val_lock_;
 
     size_t pid_;
+    size_t process_count_{0};
 
     size_t virtual_pages_;
     size_t threads_alive_;
-    size_t forked_threads_alive_;
 
     Loader* getLoader();
 
     void CleanThreads(size_t thread);
     void unmapPage();
     void deleteAllThreadsExceptCurrent(UserThread* current_thread);
-    void handler(int signum, void *infos);
+
 
 private:
     int32 fd_;
