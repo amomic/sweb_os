@@ -87,6 +87,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_execv:
             return_value = execv(arg1, arg2);
             break;
+        case sc_waitpid:
+            return_value = waitpid(arg1, reinterpret_cast<int *>(arg2), arg2);
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -111,7 +114,9 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
 
 void Syscall::exit(size_t exit_code) {
     debug(SYSCALL, "Syscall::exit: %zu\n", exit_code);
-    pthread_exit((void *) -1);
+    auto current = ((UserThread*)currentThread)->getProcess();
+    current->process_retval_map_.push_back(ustl::make_pair(current->pid_, exit_code));
+    pthread_exit((void *) exit_code);
 }
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
@@ -397,3 +402,8 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
     return ret;
 }
 
+pid_t Syscall::waitpid(pid_t pid, int *status, int options)
+{
+    debug(SYSCALL,"Waitpid.\n");
+    return ((UserThread*)currentThread)->getProcess()->waitpid(pid,status,options);
+}
