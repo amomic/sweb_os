@@ -35,7 +35,7 @@ void Semaphore::wait() {
     lock_.release();
 }
 
-void Semaphore::signal() {
+void Semaphore::post() {
     lock_.acquire();
     semaphore_++;
     if (semaphore_ <= 0) {
