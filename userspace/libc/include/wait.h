@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "sys/syscall.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -21,6 +21,7 @@ typedef uint64 uid_t;
 typedef uint64 gid_t;
 typedef uint64 size_t;
 typedef int64 ssize_t;
+typedef long int pid_t;
 
 #pragma GCC poison double float
 
