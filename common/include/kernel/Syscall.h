@@ -31,6 +31,7 @@ class Syscall
     static size_t fork();
 
     static size_t execv(char* path, char* const* argv);
+    static pid_t waitpid(pid_t pid, int *status, int options);
 
 };
 
