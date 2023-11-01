@@ -467,7 +467,6 @@ size_t UserProcess::exec(char* path){
     return 0;
 }
 
-
 void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
 {
     auto calling_thread = reinterpret_cast<UserThread*>(current_thread);
