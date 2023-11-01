@@ -3,6 +3,9 @@
 #include "Thread.h"
 #include "UserThread.h"
 #include "umap.h"
+#include "types.h"
+#include "Semaphores.h"
+#include "Condition.h"
 
 class UserThread;
 class UserProcess
@@ -30,10 +33,13 @@ public:
     UserProcess* process_;
     ustl::map<size_t, Thread *> threads_map_;
     ustl::map<size_t, void*> thread_retval_map;
+    ustl::map<size_t, size_t> process_retval_map_;
 
     Mutex threads_lock_;
     Mutex pages_lock_;
     Mutex return_val_lock_;
+    Semaphore semaphore_init;
+    Condition process_wait_cond_;
 
     size_t pid_;
     size_t process_count_{0};
@@ -49,6 +55,7 @@ public:
     bool CheckStack(size_t pos);
     size_t checkExecArgs(char *const *args);
 
+    pid_t waitpid(pid_t pid, int *status, int options);
 
 
 private:

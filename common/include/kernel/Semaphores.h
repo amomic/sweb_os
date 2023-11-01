@@ -13,7 +13,7 @@ class Semaphore: public Lock
 public:
     Semaphore(const char *name1, int initialValue);
     void wait();
-    void signal();
+    void post();
 
 
 private:
