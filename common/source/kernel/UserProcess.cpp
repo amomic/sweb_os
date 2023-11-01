@@ -461,8 +461,9 @@ size_t UserProcess::exec(char* path){
 
     //delete old kernel path and kill old thread
     delete[] kernel_path;
-    user_thread->user_registers_->rip = (size_t) (Syscall::pthread_exit);
-
+    threads_lock_.acquire();
+    user_thread->makeAsynchronousCancel();
+    threads_lock_.release();
     return 0;
 }
 
@@ -481,9 +482,6 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
             continue;
         auto handler = reinterpret_cast<UserThread*>(it->second);
         handler->makeAsynchronousCancel();
-        calling_process->threads_lock_.release();
-        handler->user_registers_->rip = (size_t) (Syscall::pthread_exit);
-        calling_process->threads_lock_.acquire();
     }
    calling_process->threads_lock_.release();
 }
