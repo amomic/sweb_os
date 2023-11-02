@@ -49,6 +49,7 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
 
 //copyconst
 UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread, size_t process_id):
+        threads_counter_for_id_(parent_process.threads_counter_for_id_),
         threads_lock_("UserProcess::threads_lock_"),
         pages_lock_("UserProcess::pages_lock_"),
         return_val_lock_("UserProcess::return_val_lock_"),
@@ -56,6 +57,7 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),
         filename_(parent_process.filename_),
         terminal_number_(parent_process.terminal_number_)
+
 {
     debug(USERPROCESS, "Im in userprocess copy constructor!\n");
 
@@ -77,18 +79,20 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
     }
 
 
+    /*threads_lock_.acquire();
     size_t new_tid = threads_map_.size() + 1;
     while(threads_map_.find(new_tid))
     {
         new_tid = new_tid+1;
     }
+    threads_lock_.release();*/
 
-    UserThread *user_thread = new  UserThread(current_thread, this, terminal_number_, filename_, fs_info_, new_tid );
+    UserThread *user_thread = new  UserThread(current_thread, this, terminal_number_, filename_, fs_info_, current_thread.tid_ );
 
     assert(user_thread && "thread creation failed for forked process \n");
     threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
-    threads_map_.push_back(ustl::make_pair(user_thread->tid_,user_thread));
+    threads_map_.push_back(ustl::make_pair(current_thread.tid_,user_thread));
     threads_alive_++;
     threads_lock_.release();
 
@@ -134,7 +138,7 @@ UserThread* UserProcess::createThread(size_t* thread, [[maybe_unused]]size_t *at
     if(!start_routine){
         wrapper = loader_->getEntryFunction();
     }
-    threads_counter_for_id_++;
+    ArchThreads::atomic_add(reinterpret_cast<int64 &>(threads_counter_for_id_), 1);
     *thread = threads_counter_for_id_;
     process_ = this;
 
@@ -155,10 +159,10 @@ void UserProcess::CleanThreads(size_t thread)
 {
     assert(Scheduler::instance()->isCurrentlyCleaningUp());
     threads_alive_--;
+    threads_map_.erase(thread);
     if(threads_alive_ == 0)
     {
         debug(USERTHREAD, "no threads left\n");
-        threads_map_.erase(thread);
         delete this;
     }
 
@@ -433,7 +437,7 @@ size_t UserProcess::exec(char* path){
 
     //set new tid
     threads_lock_.acquire();
-    threads_counter_for_id_ = threads_counter_for_id_ + 1;
+    ArchThreads::atomic_add(reinterpret_cast<int64 &>(threads_counter_for_id_), 1);
     size_t new_tid = threads_counter_for_id_;
     threads_lock_.release();
 
