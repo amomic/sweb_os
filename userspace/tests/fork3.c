@@ -3,7 +3,7 @@
 #include  "../libc/include/unistd.h"
 #include "pthread.h"
 
-#define NR_THREADS 5
+#define NR_THREADS 21
 
 void start_routine()
 {
@@ -23,30 +23,13 @@ void start_routine()
 
 int main()
 {
-
-    size_t pid = fork();
-    if(pid != 0)
-    {
-        printf("Hello from the parent process, before thread_create. My id is %zu\n", pid);
-
-        size_t tid[NR_THREADS];
+    size_t tid[NR_THREADS];
 
         for(int i = 0; i < NR_THREADS; i++)
         {
             pthread_create(&tid[i], NULL, (void*)&start_routine, (void*)7);
         }
-    }
-    else
-    {
-        printf("Hello from the child process, before thread_create. . My id is %zu\n", pid);
 
-        size_t tid[NR_THREADS];
-
-        for(int i = 0; i < NR_THREADS; i++)
-        {
-            pthread_create(&tid[i], NULL, (void*)&start_routine, (void*)7);
-        }
-    }
 
 
     // wait

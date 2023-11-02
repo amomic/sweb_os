@@ -26,7 +26,7 @@ public:
     size_t detachThread(size_t thread);
     size_t exec(char *path);
 
-    size_t threads_counter_for_id_ = 0;
+    ustl::atomic<size_t> threads_counter_for_id_ = 0;
     UserProcess* process_;
     ustl::map<size_t, Thread *> threads_map_;
     ustl::map<size_t, void*> thread_retval_map;
@@ -39,7 +39,7 @@ public:
     size_t process_count_{0};
 
     size_t virtual_pages_;
-    size_t threads_alive_;
+    ustl::atomic<size_t >threads_alive_;
 
     Loader* getLoader();
 
