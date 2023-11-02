@@ -32,16 +32,8 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     bool vpn_mapped = -1;
 
-    if(tid == 0)
-    {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, stack_ppn , 1);
-        virtual_pages_ = USER_BREAK / PAGE_SIZE - 1;
-    }
-    else
-    {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1, stack_ppn , 1);
-        virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1;
-    }
+    vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1, stack_ppn , 1);
+    virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1;
 
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
