@@ -347,8 +347,6 @@ void UserProcess::unmapPage() {
     size_t valid = currenThread->loader_->arch_memory_.checkAddressValid(currenThread->virtual_pages_*PAGE_SIZE);
     if(valid)
         currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
-    else
-        return;
 }
 
 size_t UserProcess::exec(char* path){
