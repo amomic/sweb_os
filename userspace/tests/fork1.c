@@ -18,6 +18,9 @@ int main()
     int retval = fork();
 
     printf("retval %d\n", retval);
+    pthread_t* new_thread1 = 0;
+    int return_value1 = pthread_create(new_thread1, NULL, NULL, NULL);
+    assert(return_value1 != 0);
 
     printf("fork1  finished successful!\n");
 

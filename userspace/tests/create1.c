@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     int number_of_threads = 5;
     pthread_t new_thread[number_of_threads];
     int return_value = -1;
+
     for(int cnt = 0; cnt < number_of_threads; cnt++)
     {
         return_value = pthread_create(&new_thread[cnt], NULL,

@@ -29,7 +29,7 @@ class atomic {
 public:
 			atomic (void) = default;
     inline constexpr	atomic (T v) : _v(v) {}
-			atomic (const atomic&) = delete;
+			atomic (const atomic&) = default;
     atomic&		operator= (const atomic&) = delete;
     inline bool		is_lock_free (void) const
 			    { return __atomic_is_lock_free (sizeof(T), &_v); }
