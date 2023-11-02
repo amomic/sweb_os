@@ -59,7 +59,7 @@ public:
     UserThread *waited_by_ = nullptr;
 
     Condition join_condition_;
-    size_t virtual_pages_{};
+    size_t virtual_pages_;
 
     void makeAsynchronousCancel();
 
