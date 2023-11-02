@@ -343,11 +343,7 @@ size_t UserProcess::detachThread(size_t thread) {
 void UserProcess::unmapPage() {
 
     auto currenThread = reinterpret_cast<UserThread*>(currentThread);
-    size_t valid = currenThread->loader_->arch_memory_.checkAddressValid(currenThread->virtual_pages_*PAGE_SIZE);
-    if(valid)
-        currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
-    else
-        return;
+    currentThread->loader_->arch_memory_.unmapPage(currenThread->virtual_pages_);
 }
 
 size_t UserProcess::exec(char* path){
