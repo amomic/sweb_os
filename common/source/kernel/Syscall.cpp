@@ -394,7 +394,6 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
     }
 
     // Do we need anything else here?
-
     UserProcess* user_process = ((UserThread*)currentThread)->getProcess();
 
     size_t ret = user_process->exec(path_name);
