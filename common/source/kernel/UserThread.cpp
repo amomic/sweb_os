@@ -74,6 +74,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
     this->setTID(thread_id);
 
     debug(USERTHREAD, "Thread ID is: %lu \n", tid_);
+    virtual_pages_ = process_thread_pointer.virtual_pages_;
 
     ArchThreads::createUserRegisters(user_registers_, process_thread_pointer.wrapper_,
                                      (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid_*PAGE_SIZE),
