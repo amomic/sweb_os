@@ -46,6 +46,8 @@ public:
     void CleanThreads(size_t thread);
     void unmapPage();
     void deleteAllThreadsExceptCurrent(UserThread* current_thread);
+    bool CheckStack(size_t pos);
+
 
 
 private:
