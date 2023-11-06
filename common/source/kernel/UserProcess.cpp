@@ -680,3 +680,35 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
         return pid;
     }
 }
+bool UserProcess::CheckStack(size_t pos)
+{
+    auto thread = ((UserThread*)currentThread);
+    for (auto it: threads_map_)
+    {
+        debug(USERPROCESS , "%18zx", pos);
+        debug(USERPROCESS , "%18zx", thread->stack_start);
+        debug(USERPROCESS , "%18zx", thread->stack_end);
+        if(pos/PAGE_SIZE <= thread->stack_start && pos/PAGE_SIZE > thread->stack_end)
+        {
+            debug(USERPROCESS , "%18zx", pos);
+            debug(USERPROCESS , "%18zx", thread->stack_start);
+            debug(USERPROCESS , "%18zx", thread->stack_end);
+
+            size_t ppn = PageManager::instance()->allocPPN();
+             bool mapped = it.second->loader_->arch_memory_.mapPage(pos/PAGE_SIZE, ppn, true);
+            if(!mapped)
+            {
+                PageManager::instance()->freePPN(ppn);
+            }
+            else
+            {
+                thread->virtual_pages_.push_back(pos/PAGE_SIZE);
+            }
+            return true;
+        }
+    }
+
+
+    return false;
+}
+
