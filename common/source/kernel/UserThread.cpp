@@ -12,7 +12,8 @@
 
 //constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
-                       [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid, [[maybe_unused]]void *argc, [[maybe_unused]]size_t args) :
+                       [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid,
+                       [[maybe_unused]]void *argc, [[maybe_unused]]size_t args) :
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(userProcess),
         tid_(tid),
@@ -22,7 +23,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 {
     wrapper_ = wrapper;
     loader_ = userProcess->getLoader();
-    size_t stack_ppn= PageManager::instance()->allocPPN();
+    size_t stack_ppn = PageManager::instance()->allocPPN();
 
     this->setTID(tid);
 
@@ -32,26 +33,25 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     bool vpn_mapped = -1;
 
-    if(tid == 0)
+    if (tid == 0)
     {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, stack_ppn , 1);
+        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - 1, stack_ppn, 1);
         virtual_pages_ = USER_BREAK / PAGE_SIZE - 1;
-    }
-    else
+    } else
     {
-        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1, stack_ppn , 1);
+        vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1, stack_ppn, 1);
         virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1;
     }
 
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
     ArchThreads::createUserRegisters(user_registers_, wrapper,
-                                     (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid*PAGE_SIZE),
+                                     (void *) (USER_BREAK - sizeof(pointer) - PAGE_MAX * tid * PAGE_SIZE),
                                      getKernelStackStartPointer());
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
 
-    if(start_routine)
+    if (start_routine)
     {
         user_registers_->rdi = reinterpret_cast<uint64>(start_routine);
         user_registers_->rsi = reinterpret_cast<uint64>(argc);
@@ -66,14 +66,15 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 }
 
 //copy constructor
-UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *parent_process, uint32 terminal_number,
-                        ustl::string filename, FileSystemInfo *fs_info, size_t thread_id):
+UserThread::UserThread(const UserThread &process_thread_pointer, UserProcess *parent_process, uint32 terminal_number,
+                       ustl::string filename, FileSystemInfo *fs_info, size_t thread_id) :
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(parent_process),
         tid_(thread_id),
         state_join_lock_("UserThread::state_join_lock_"),
         join_condition_(&parent_process->return_val_lock_, "UserThread::join_condition_"),
-        terminal_number_(terminal_number){
+        terminal_number_(terminal_number)
+{
 
     loader_ = process_->getLoader();
 
@@ -82,7 +83,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
     debug(USERTHREAD, "Thread ID is: %lu \n", tid_);
 
     ArchThreads::createUserRegisters(user_registers_, process_thread_pointer.wrapper_,
-                                     (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid_*PAGE_SIZE),
+                                     (void *) (USER_BREAK - sizeof(pointer) - PAGE_MAX * tid_ * PAGE_SIZE),
                                      getKernelStackStartPointer());
 
     memcpy(this->user_registers_, currentThread->user_registers_, sizeof(ArchThreadRegisters));
@@ -93,7 +94,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
     //process_->loader_->arch_memory_.arch_mem_lock.release();
 
     user_registers_->rax = 0;
-    user_registers_->rsp0 = (size_t)getKernelStackStartPointer();
+    user_registers_->rsp0 = (size_t) getKernelStackStartPointer();
 
     if (main_console->getTerminal(terminal_number_))
         setTerminal(main_console->getTerminal(terminal_number_));
@@ -115,12 +116,13 @@ void UserThread::Run()
     assert(false);
 }
 
-UserProcess* UserThread::getProcess()
+UserProcess *UserThread::getProcess()
 {
     return process_;
 }
 
-void UserThread::setJoinTID(size_t tid) {
+void UserThread::setJoinTID(size_t tid)
+{
     join_TID = tid;
 }
 
@@ -129,8 +131,19 @@ size_t UserThread::getJoinTID()
     return join_TID;
 }
 
-void UserThread::makeAsynchronousCancel(){
+void UserThread::makeAsynchronousCancel()
+{
     thread_cancel_type_ = UserThread::ASYNCHRONOUS;
     thread_cancel_state_ = UserThread::ENABLED;
     thread_cancellation_state_ = UserThread::ISCANCELED;
+}
+
+uint64 UserThread::getStartClockTime() const
+{
+    return start_clock_time_;
+}
+
+void UserThread::setStartClockTime(uint64 startClockTime)
+{
+    start_clock_time_ = startClockTime;
 }

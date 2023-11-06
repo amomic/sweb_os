@@ -24,5 +24,7 @@
 #define sc_pthread_setcancelstate 304
 #define sc_pthread_setcanceltype 305
 #define sc_pthread_detach 306
+#define sc_clock 1000
+#define sc_sleep 1001
 
 
