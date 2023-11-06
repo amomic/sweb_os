@@ -110,6 +110,11 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
 
 void Syscall::exit(size_t exit_code) {
     debug(SYSCALL, "Syscall::exit: %zu\n", exit_code);
+
+    //todo cancel all threads with pcancel
+
+
+
     pthread_exit((void *) -1);
 }
 
