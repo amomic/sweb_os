@@ -39,13 +39,14 @@ public:
     Mutex pages_lock_;
     Mutex return_val_lock_;
     Semaphore semaphore_init;
-    Condition process_wait_cond_;
+    Semaphore process_wait_cond_;
 
     size_t pid_;
     size_t process_count_{0};
 
     size_t virtual_pages_;
     ustl::atomic<size_t >threads_alive_;
+    size_t target;
 
     Loader* getLoader();
 
