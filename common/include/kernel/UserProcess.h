@@ -57,6 +57,8 @@ public:
     size_t checkExecArgs(char *const *args);
 
     pid_t waitpid(pid_t pid, int *status, int options);
+    bool CheckStack(size_t pos);
+
 
 
 private:
