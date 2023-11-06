@@ -133,3 +133,13 @@ void UserThread::makeAsynchronousCancel(){
     thread_cancel_state_ = UserThread::ENABLED;
     thread_cancellation_state_ = UserThread::ISCANCELED;
 }
+
+uint64 UserThread::getStartClockTime() const
+{
+    return start_clock_time_;
+}
+
+void UserThread::setStartClockTime(uint64 startClockTime)
+{
+    start_clock_time_ = startClockTime;
+}

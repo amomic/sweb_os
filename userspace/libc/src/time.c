@@ -1,5 +1,6 @@
 #include "time.h"
-
+#include "sys/syscall.h"
+#include "../../../common/include/kernel/syscall-definitions.h"
 
 /**
  * function stub
@@ -7,5 +8,5 @@
  */
 clock_t clock(void)
 {
-  return (clock_t) -1U;
+  return (clock_t) __syscall(sc_clock, 0x00, 0x00, 0x00, 0x00, 0x00);
 }
