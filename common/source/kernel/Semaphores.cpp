@@ -18,32 +18,48 @@ Semaphore::Semaphore(const char *name1, int initialValue) : Lock(name1), lock_("
 }
 
 void Semaphore::wait() {
-    lock_.acquire();
+
     while (semaphore_ <= 0) {
 
+
+        checkCurrentThreadStillWaitingOnAnotherLock();
         lockWaitersList();
+
+
         if(semaphore_>0)
         {
             unlockWaitersList();
+            //lock_.acquire();
+
             break;
         }
+        doChecksBeforeWaiting();
+
         // Block the current thread until signaled
         sleepAndRelease();
-        lock_.acquire();
+    currentThread->lock_waiting_on_=0;
+
+
     }
     semaphore_--;
-    lock_.release();
+
 }
 
 void Semaphore::post() {
-    lock_.acquire();
+
+    lockWaitersList();
     semaphore_++;
-    if (semaphore_ <= 0) {
+
+
+
         // Wake up a waiting thread
         Thread* thread_to_be_woken_up = popBackThreadFromWaitersList();
-        lock_.release();
-        Scheduler::instance()->wake(thread_to_be_woken_up);
-    } else {
-        lock_.release();
-    }
+
+        unlockWaitersList();
+        if(thread_to_be_woken_up != nullptr)
+            Scheduler::instance()->wake(thread_to_be_woken_up);
+
+
+
+
 }

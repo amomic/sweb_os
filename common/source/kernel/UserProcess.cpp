@@ -16,7 +16,7 @@
 UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number) :
         threads_lock_("UserProcess::threads_lock_"), pages_lock_("UserProcess::pages_lock_"),
         return_val_lock_("UserProcess::return_val_lock_"), semaphore_init("UserProcess::semaphore_init",1),
-        process_wait_cond_(&ProcessRegistry::instance()->process_lock_,"UserProcess:process_wait_cond_"), threads_alive_(0),
+        process_wait_cond_("Semaphore:process_wait_cond_",0), threads_alive_(0),
         fd_(VfsSyscall::open(filename, O_RDONLY)), filename_(filename),
         fs_info_(fs_info), terminal_number_(terminal_number)
 {
@@ -55,7 +55,7 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         pages_lock_("UserProcess::pages_lock_"),
         return_val_lock_("UserProcess::return_val_lock_"),
         semaphore_init("UserProcess::semaphore_init",1),
-        process_wait_cond_(&ProcessRegistry::instance()->process_lock_,"UserProcess:process_wait_cond_"),pid_(process_id),
+        process_wait_cond_("Semaphore:process_wait_cond_",0),pid_(process_id),
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),
         filename_(parent_process.filename_),
         terminal_number_(parent_process.terminal_number_)
@@ -110,7 +110,14 @@ UserProcess::~UserProcess()
 {
     assert(Scheduler::instance()->isCurrentlyCleaningUp());
     ProcessRegistry::instance()->process_lock_.acquire();
-    process_wait_cond_.broadcast();
+    for( auto it: ProcessRegistry::instance()->process_map_)
+    {
+        if(pid_ == it.second->target)
+        {
+            debug(USERPROCESS, "aloha \n");
+            it.second->process_wait_cond_.post();
+        }
+    }
     ProcessRegistry::instance()->process_map_.erase(pid_);
     ProcessRegistry::instance()->process_lock_.release();
     delete loader_;
@@ -494,60 +501,65 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
 
 pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 {
-    semaphore_init.wait();
-    auto target = ProcessRegistry::instance()->process_map_.find(pid);
+    ProcessRegistry::instance()->process_lock_.acquire();
+    debug(USERPROCESS, "first msg\n");
+    auto target1 = ProcessRegistry::instance()->process_map_.find(pid);
     auto caller = ((UserThread*)currentThread)->getProcess();
+    debug(USERPROCESS, "before if\n");
     if (caller->pid_ == (size_t)pid)
     {
-        semaphore_init.post();
+        ProcessRegistry::instance()->process_lock_.release();
+       debug(USERPROCESS, "im in if\n");
         return -1;
     }
 
-    if (!target)
+    debug(USERPROCESS, "im after if\n");
+    if (target1 == ProcessRegistry::instance()->process_map_.end())
     {
         debug(USERPROCESS, "No process, maybe already terminated or didn't exist\n");
         auto retval = process_retval_map_.find(pid);
         if (!retval)
         {
             *status = -1;
-            semaphore_init.post();
+            ProcessRegistry::instance()->process_lock_.release();
             return -1;
         }
         else
         {
             *status = retval->second;
             process_retval_map_.erase(pid);
-            semaphore_init.post();
+            ProcessRegistry::instance()->process_lock_.release();
             return pid;
         }
     }
 
-    while (target)
-    {
+    target = pid;
+
         // Wait for the process to terminate using the condition variable
-        {
-            ProcessRegistry::instance()->process_lock_.acquire();
+
+            debug(USERPROCESS, "Heloooo");
+            ProcessRegistry::instance()->process_lock_.release();
+
             process_wait_cond_.wait();
-        }
+            debug(USERPROCESS, "hi");
 
-        // Recheck the target process
-        target = ProcessRegistry::instance()->process_map_.find(pid);
-    }
+            ProcessRegistry::instance()->process_lock_.acquire();
 
-    ProcessRegistry::instance()->process_lock_.release();
+
+
 
     auto retval = process_retval_map_.find(pid);
     if (!retval)
     {
         *status = -1;
-        semaphore_init.post();
+        ProcessRegistry::instance()->process_lock_.release();
         return -1;
     }
     else
     {
         *status = retval->second;
         process_retval_map_.erase(pid);
-        semaphore_init.post();
+        ProcessRegistry::instance()->process_lock_.release();
         return pid;
     }
 }
