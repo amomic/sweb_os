@@ -45,7 +45,8 @@ public:
     template <typename T3, typename T4>
     inline		pair (T3&& a, T4&& b)		: first (forward<T3>(a)), second (forward<T4>(b)) {}
     template <typename T3, typename T4>
-    inline		pair (pair<T3,T4>&& p2)		: first (forward<T3>(p2.first)), second (forward<T4>(p2.second)) {}
+    inline		pair (pair<T3,T4>&& p2)		: first (forward<T3>(p2.first)), second (
+            static_cast<second_type>(forward<T4>(p2.second))) {}
     inline pair&	operator= (pair&& p2)		{ first = move(p2.first); second = move(p2.second); return *this; }
     template <typename T3, typename T4>
     inline pair&	operator= (pair<T3,T4>&& p2)	{ first = forward<T3>(p2.first); second = forward<T4>(p2.second); return *this; }
