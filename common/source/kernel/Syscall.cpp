@@ -86,6 +86,12 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_execv:
             return_value = execv(arg1, arg2);
             break;
+        case sc_clock:
+            return_value = clock();
+            break;
+        case sc_sleep:
+            return_value = thread_sleep(arg1);
+            break;
         case sc_waitpid:
             return_value = waitpid(arg1, reinterpret_cast<int *>(arg2), arg2);
             break;
@@ -260,7 +266,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     debug(SYSCALL, "line before kill in pexit");
 
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
-    current_thread->getProcess()->unmapPage();
+    current_thread->process_->unmapPage();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
 
     current_thread->kill();
@@ -411,3 +417,30 @@ pid_t Syscall::waitpid(pid_t pid, int *status, int options)
     debug(SYSCALL,"Waitpid.\n");
     return ((UserThread*)currentThread)->getProcess()->waitpid(pid,status,options);
 }
+size_t Syscall::clock(void)
+{
+    uint64 time_start = reinterpret_cast<UserThread *>(currentThread)->getStartClockTime();
+    uint64 time_current = ArchThreads::rdtsc();
+
+    size_t value = ((time_current - time_start) / 54925);
+    return value;
+}
+
+size_t Syscall::thread_sleep(size_t seconds)
+{
+//     https://www.quora.com/What-is-the-time-for-a-processor-to-respond-to-an-interrupt-run-the-ISR-and-return-to-the-interrupted-program-given-the-following-details
+//     1 sec approx 18 tick
+//     current_ticks + amount of ticks for sleep -> tick value on which the thread should wake up
+//     should yield and leave the resources for threads that are still running
+//     return 0 if rescheduled
+
+    debug(SYSCALL, "Syscall::Sleep for %zu seconds\n", seconds);
+
+    uint32 current_number_of_ticks = Scheduler::instance()->getTicks();
+    uint32 should_sleep_for_x_ticks = 18 * seconds;
+    uint32 wake_up_after = current_number_of_ticks + should_sleep_for_x_ticks;
+    Scheduler::instance()->sleeping_threads_.push_back({currentThread, wake_up_after});
+    Scheduler::instance()->yield();
+    return 0;
+}
+

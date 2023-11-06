@@ -33,5 +33,11 @@ class Syscall
     static size_t execv(size_t path, size_t argv);
     static pid_t waitpid(pid_t pid, int *status, int options);
 
+
+    static size_t clock(void);
+
+
+    static size_t thread_sleep(size_t seconds);
+
 };
 
