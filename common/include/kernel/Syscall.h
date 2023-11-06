@@ -32,5 +32,11 @@ class Syscall
 
     static size_t execv(size_t path, size_t argv);
 
+
+    static size_t clock(void);
+
+
+    static size_t thread_sleep(size_t seconds);
+
 };
 

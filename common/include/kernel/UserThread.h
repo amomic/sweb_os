@@ -5,9 +5,11 @@
 #include "UserProcess.h"
 #include "Condition.h"
 
-class UserThread : public Thread {
+class UserThread : public Thread
+{
 public:
-    enum DETATCH_STATE {
+    enum DETATCH_STATE
+    {
         JOINABLE = 7, DETATCHED = 8
     };
 
@@ -17,7 +19,8 @@ public:
 
     //copy constructor
     UserThread([[maybe_unused]]const UserThread &process_thread_pointer, UserProcess *parent_process,
-      uint32 terminal_number, ustl::string filename, FileSystemInfo *fs_info, size_t thread_id);
+               uint32 terminal_number, ustl::string filename, FileSystemInfo *fs_info, size_t thread_id);
+
     ~UserThread();
 
     void Run();
@@ -28,15 +31,18 @@ public:
     static const size_t STACK_PAGES = 15;
     size_t tid_;
     size_t offset_{};
-    void* wrapper_;
+    void *wrapper_;
     // Custom Enums
-    enum THREAD_CANCEL_STATE {
+    enum THREAD_CANCEL_STATE
+    {
         ENABLED = 1, DISABLED = 0
     };
-    enum THREAD_CANCEL_TYPE {
+    enum THREAD_CANCEL_TYPE
+    {
         ASYNCHRONOUS = 0, DEFERRED = 1
     };
-    enum THREAD_CANCELATION {
+    enum THREAD_CANCELATION
+    {
         ISCANCELED = 1, NOTCANCELED = 0
     };
 
@@ -63,9 +69,15 @@ public:
 
     void makeAsynchronousCancel();
 
+    uint64 getStartClockTime() const;
+
+    void setStartClockTime(uint64 startClockTime);
+
 private:
     ustl::string filename_;
     FileSystemInfo *fs_info_{};
     uint32 terminal_number_;
     size_t join_TID;
+    uint64 start_clock_time_;
+
 };
