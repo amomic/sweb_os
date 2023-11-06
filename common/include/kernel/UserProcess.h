@@ -30,6 +30,7 @@ public:
     UserProcess* process_;
     ustl::map<size_t, Thread *> threads_map_;
     ustl::map<size_t, void*> thread_retval_map;
+    ustl::map<size_t, size_t> process_retval_map_;
 
     Mutex threads_lock_;
     Mutex pages_lock_;
