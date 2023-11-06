@@ -478,7 +478,6 @@ size_t Syscall::thread_sleep(size_t seconds)
     uint32 wake_up_after = current_number_of_ticks + should_sleep_for_x_ticks;
     Scheduler::instance()->sleeping_threads_.push_back({currentThread, wake_up_after});
     Scheduler::instance()->yield();
-    debug(SYSCALL, "blee");
     Scheduler::instance()->sleeping_threads_.erase({currentThread});
 
     return 0;
