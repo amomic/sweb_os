@@ -7,6 +7,7 @@
 #include "Loader.h"
 #include "Syscall.h"
 #include "ArchThreads.h"
+#include "UserThread.h"
 extern "C" void arch_contextSwitch();
 
 const size_t PageFaultHandler::null_reference_check_border_ = PAGE_SIZE;
@@ -59,9 +60,23 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
   ArchThreads::printThreadRegisters(currentThread, false);
 
+
   if (checkPageFaultIsValid(address, user, present, switch_to_us))
   {
-    currentThread->loader_->loadPage(address);
+      debug(USERPROCESS , "%18zx", address);
+      if(address>STACK_POS)
+      {
+          if(((UserThread*)currentThread)->process_->CheckStack(address))
+          {
+              return;
+          }
+          else
+          {
+              Syscall::exit(9999);
+          }
+      }
+      else
+          currentThread->loader_->loadPage(address);
   }
   else
   {
@@ -75,6 +90,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
     else
       currentThread->kill();
   }
+
+  //todo cancellation points before and after
   debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
 }
 
