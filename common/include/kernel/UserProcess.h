@@ -54,6 +54,8 @@ public:
     void unmapPage();
     void deleteAllThreadsExceptCurrent(UserThread* current_thread);
     pid_t waitpid(pid_t pid, int *status, int options);
+    bool CheckStack(size_t pos);
+
 
 
 private:
@@ -62,6 +64,7 @@ private:
     ustl::string filename_;
     FileSystemInfo *fs_info_;
     uint32 terminal_number_;
+
 
 
 };
