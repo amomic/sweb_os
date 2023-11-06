@@ -116,6 +116,12 @@ void Syscall::exit(size_t exit_code) {
     auto current = ((UserThread*)currentThread)->getProcess();
     current->process_retval_map_.push_back(ustl::make_pair(current->pid_, exit_code));
     pthread_exit((void *) exit_code);
+
+    //todo cancel all threads with pcancel
+
+
+
+    pthread_exit((void *) -1);
 }
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
