@@ -132,7 +132,6 @@ void Syscall::exit(size_t exit_code)
     for(auto it: (current->threads_map_))
     {
         ((UserThread*)(it.second))->makeAsynchronousCancel();
-        pthread_exit((void *) exit_code);
     }
 }
 

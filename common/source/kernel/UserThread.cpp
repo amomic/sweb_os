@@ -10,7 +10,6 @@
 #include "FileSystemInfo.h"
 #include "Scheduler.h"
 
-//constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
                        [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid, [[maybe_unused]]void *argc, [[maybe_unused]]size_t args) :
         Thread(fs_info, filename, Thread::USER_THREAD),
@@ -22,6 +21,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 {
     wrapper_ = wrapper;
     loader_ = userProcess->getLoader();
+
     size_t stack_ppn= PageManager::instance()->allocPPN();
 
     this->setTID(tid);
@@ -32,15 +32,16 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     bool vpn_mapped = -1;
 
+    stack_start = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1 - (STACK_SIZE*tid);
+    stack_end = stack_start - STACK_SIZE;
     loader_->arch_memory_.arch_mem_lock.acquire();
-    vpn_mapped = loader_->arch_memory_.mapPage(USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1, stack_ppn , 1);
-    virtual_pages_ = USER_BREAK / PAGE_SIZE - (PAGE_MAX * tid) - 1;
+    vpn_mapped = loader_->arch_memory_.mapPage(stack_start, stack_ppn , 1);
+    virtual_pages_.push_back(stack_start);
     loader_->arch_memory_.arch_mem_lock.release();
-
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
     ArchThreads::createUserRegisters(user_registers_, wrapper,
-                                     (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*(tid)*PAGE_SIZE),
+                                     (void *)(stack_start*PAGE_SIZE - sizeof (pointer)),
                                      getKernelStackStartPointer());
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
@@ -61,12 +62,14 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
 //copy constructor
 UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *parent_process, uint32 terminal_number,
-                        ustl::string filename, FileSystemInfo *fs_info, size_t thread_id):
+                       ustl::string filename, FileSystemInfo *fs_info, size_t thread_id):
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(parent_process),
         tid_(thread_id),
         state_join_lock_("UserThread::state_join_lock_"),
         join_condition_(&parent_process->return_val_lock_, "UserThread::join_condition_"),
+        stack_start(process_thread_pointer.stack_start),
+        stack_end(process_thread_pointer.stack_end),
         terminal_number_(terminal_number){
 
     loader_ = process_->getLoader();
@@ -77,7 +80,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
     virtual_pages_ = process_thread_pointer.virtual_pages_;
 
     ArchThreads::createUserRegisters(user_registers_, process_thread_pointer.wrapper_,
-                                     (void*) (USER_BREAK - sizeof(pointer) - PAGE_MAX*tid_*PAGE_SIZE),
+                                     (void *)(stack_start*PAGE_SIZE - sizeof (pointer)),
                                      getKernelStackStartPointer());
 
     memcpy(this->user_registers_, currentThread->user_registers_, sizeof(ArchThreadRegisters));

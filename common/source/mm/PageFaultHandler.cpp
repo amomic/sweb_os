@@ -8,6 +8,7 @@
 #include "Syscall.h"
 #include "ArchThreads.h"
 #include "UserThread.h"
+#include "paging-definitions.h"
 extern "C" void arch_contextSwitch();
 
 const size_t PageFaultHandler::null_reference_check_border_ = PAGE_SIZE;
@@ -60,34 +61,67 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
   ArchThreads::printThreadRegisters(currentThread, false);
 
-    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
-        Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
-    }
-
     if (checkPageFaultIsValid(address, user, present, switch_to_us))
-     {
+    {
         currentThread->loader_->loadPage(address);
     }
-  else
-  {
-    // the page-fault seems to be faulty, print out the thread stack traces
-    ArchThreads::printThreadRegisters(currentThread, true);
-    currentThread->printBacktrace(true);
-    if (currentThread->loader_)
-    {
-        Syscall::exit(9999);
-    }
     else
-      currentThread->kill();
-  }
-
-    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
-        Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
+    {
+        // the page-fault seems to be faulty, print out the thread stack traces
+        ArchThreads::printThreadRegisters(currentThread, true);
+        currentThread->printBacktrace(true);
+        if (currentThread->loader_)
+        {
+            Syscall::exit(9999);
+        }
+        else
+            currentThread->kill();
     }
+
+
+    /* if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+         reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+         reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+         Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
+     }
+
+
+     if (checkPageFaultIsValid(address, user, present, switch_to_us))
+     {
+         debug(USERPROCESS , "%18zx", address);
+         if(address>STACK_POS)
+         {
+             if(((UserThread*)currentThread)->process_->CheckStack(address))
+             {
+                 return;
+             }
+             else
+             {
+                 Syscall::exit(9999);
+             }
+         }
+         else
+             currentThread->loader_->loadPage(address);
+     }
+     else
+     {
+         // the page-fault seems to be faulty, print out the thread stack traces
+         ArchThreads::printThreadRegisters(currentThread, true);
+         currentThread->printBacktrace(true);
+         if (currentThread->loader_)
+         {
+             Syscall::exit(9999);
+         }
+         else
+             currentThread->kill();
+     }
+
+
+     if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+         reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+         reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+         Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
+     }*/
   debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
 }
 

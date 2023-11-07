@@ -8,7 +8,6 @@
 #define PAGE_TABLE_ENTRIES 512
 #define PAGE_SIZE 4096
 
-#define PAGE_MAX 64
 #define PAGE_INDEX_OFFSET_BITS 12
 
 
