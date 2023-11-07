@@ -7,6 +7,7 @@
 #include "Loader.h"
 #include "Syscall.h"
 #include "ArchThreads.h"
+#include "paging-definitions.h"
 #include "UserThread.h"
 extern "C" void arch_contextSwitch();
 
@@ -60,8 +61,13 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
   ArchThreads::printThreadRegisters(currentThread, false);
 
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+        Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
+    }
 
-  if (checkPageFaultIsValid(address, user, present, switch_to_us))
+    if (checkPageFaultIsValid(address, user, present, switch_to_us))
   {
       debug(USERPROCESS , "%18zx", address);
       if(address>STACK_POS)
@@ -77,6 +83,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
       }
       else
           currentThread->loader_->loadPage(address);
+
   }
   else
   {
@@ -91,8 +98,13 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
       currentThread->kill();
   }
 
-  //todo cancellation points before and after
-  debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+        Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
+    }
+
+    debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
 }
 
 void PageFaultHandler::enterPageFault(size_t address, bool user,

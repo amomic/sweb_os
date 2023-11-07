@@ -37,7 +37,7 @@ void Semaphore::wait() {
 
         // Block the current thread until signaled
         sleepAndRelease();
-    currentThread->lock_waiting_on_=0;
+        currentThread->lock_waiting_on_=0;
 
 
     }
@@ -50,14 +50,12 @@ void Semaphore::post() {
     lockWaitersList();
     semaphore_++;
 
+    // Wake up a waiting thread
+    Thread* thread_to_be_woken_up = popBackThreadFromWaitersList();
 
-
-        // Wake up a waiting thread
-        Thread* thread_to_be_woken_up = popBackThreadFromWaitersList();
-
-        unlockWaitersList();
-        if(thread_to_be_woken_up != nullptr)
-            Scheduler::instance()->wake(thread_to_be_woken_up);
+    unlockWaitersList();
+    if(thread_to_be_woken_up != nullptr)
+        Scheduler::instance()->wake(thread_to_be_woken_up);
 
 
 

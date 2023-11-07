@@ -5,6 +5,7 @@
 #include "UserProcess.h"
 #include "ArchThreads.h"
 #include "Console.h"
+#include "paging-definitions.h"
 #include "ustring.h"
 #include "UserThread.h"
 #include "FileSystemInfo.h"
