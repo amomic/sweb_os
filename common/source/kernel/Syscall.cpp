@@ -11,12 +11,15 @@
 #include "UserProcess.h"
 #include "Loader.h"
 #include "ArchMemory.h"
+#include "ArchThreads.h"
 
-size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5) {
+size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
+{
 
-    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+    if (reinterpret_cast<UserThread *>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED)
+    {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
@@ -28,7 +31,8 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
               syscall_number, arg1, arg1, arg2, arg2, arg3, arg3, arg4, arg4, arg5, arg5);
     }
 
-    switch (syscall_number) {
+    switch (syscall_number)
+    {
         case sc_sched_yield:
             Scheduler::instance()->yield();
             break;
@@ -86,6 +90,12 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_execv:
             return_value = execv(arg1, arg2);
             break;
+        case sc_clock:
+            return_value = clock();
+            break;
+        case sc_sleep:
+            return_value = thread_sleep(arg1);
+            break;
         case sc_waitpid:
             return_value = waitpid(arg1, reinterpret_cast<int *>(arg2), arg2);
             break;
@@ -93,9 +103,10 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
     }
-    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+    if (reinterpret_cast<UserThread *>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED)
+    {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
@@ -261,7 +272,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     debug(SYSCALL, "line before kill in pexit");
 
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
-    current_thread->getProcess()->unmapPage();
+    current_thread->process_->unmapPage();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
 
     current_thread->kill();
@@ -288,12 +299,14 @@ size_t Syscall::pthread_cancel(size_t thread_id) {
     currentUserProcess->threads_lock_.acquire();
     // get our thread from the thread table/map
     auto thread_map_entry = currentUserProcess->threads_map_.find(thread_id);
-    if (thread_map_entry != currentUserProcess->threads_map_.end()) {
+    if (thread_map_entry != currentUserProcess->threads_map_.end())
+    {
         // get the thread from table with iterator
         UserThread *cancelled_thread = reinterpret_cast<UserThread *>(thread_map_entry->second);
 
         if (cancelled_thread->thread_cancel_state_ == UserThread::THREAD_CANCEL_STATE::ENABLED &&
-            cancelled_thread->thread_cancel_type_ == UserThread::THREAD_CANCEL_TYPE::DEFERRED) {
+            cancelled_thread->thread_cancel_type_ == UserThread::THREAD_CANCEL_TYPE::DEFERRED)
+        {
             //cancle thread ??
             cancelled_thread->thread_cancellation_state_ = UserThread::ISCANCELED;
             debug(CANCEL_SUCCESS, "Syscall::pthread_cancel-> %zu thread has been flagged for cancellation\n",
@@ -303,7 +316,8 @@ size_t Syscall::pthread_cancel(size_t thread_id) {
             currentUserProcess->threads_lock_.release();
             debug(CANCEL_INFO, "Syscall::pthread_cancel has unlocked threads map\n");
             return 0;
-        } else {
+        } else
+        {
             debug(CANCEL_ERROR, "Syscall::pthread_cancel: %zu found, but cannot cancelled \n", thread_id);
             currentUserProcess->threads_lock_.release();
             debug(CANCEL_INFO, "Syscall::pthread_cancel has unlocked threads map\n");
@@ -320,25 +334,29 @@ size_t Syscall::pthread_cancel(size_t thread_id) {
     return -1ULL;
 }
 
-size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate) {
+size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate)
+{
     debug(CANCEL_INFO, "pthread_setcanclestate is being called with the following arguments: %zu %zu \n", state,
           *oldstate);
     UserThread *current_thread = reinterpret_cast<UserThread *>(currentThread);
 
     // check for unknown state
-    if (state != UserThread::THREAD_CANCEL_STATE::ENABLED && state != UserThread::THREAD_CANCEL_STATE::DISABLED) {
+    if (state != UserThread::THREAD_CANCEL_STATE::ENABLED && state != UserThread::THREAD_CANCEL_STATE::DISABLED)
+    {
         debug(CANCEL_ERROR, "pthread_setcanclestate-> State invalid!!!\n");
         return -1ULL;
     }
 
     // Oldstate should not be nullpointer or kernelpointer
-    if ((size_t) oldstate >= USER_BREAK) {
+    if ((size_t) oldstate >= USER_BREAK)
+    {
         return -1ULL;
     }
 
     // myb chck invalid state?
 
-    if (oldstate != nullptr) {
+    if (oldstate != nullptr)
+    {
         *oldstate = current_thread->thread_cancel_state_;
     }
     reinterpret_cast<UserThread *> (currentThread)->thread_cancel_state_ = (UserThread::THREAD_CANCEL_STATE) state;
@@ -346,25 +364,29 @@ size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate) {
     return 0;
 }
 
-size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype) {
+size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype)
+{
     debug(CANCEL_INFO, "pthread_setcancletype is being called with the following arguments: %zu %zu \n", type,
           *oldtype);
     UserThread *current_thread = reinterpret_cast<UserThread *>(currentThread);
 
     // check for unknown type
-    if (type != UserThread::THREAD_CANCEL_TYPE::DEFERRED && type != UserThread::THREAD_CANCEL_TYPE::ASYNCHRONOUS) {
+    if (type != UserThread::THREAD_CANCEL_TYPE::DEFERRED && type != UserThread::THREAD_CANCEL_TYPE::ASYNCHRONOUS)
+    {
         debug(CANCEL_ERROR, "pthread_setcanclestate-> State invalid!!!\n");
         return -1ULL;
     }
 
     // Oldstate should not be nullpointer or kernelpointer
-    if ((size_t) oldtype >= USER_BREAK) {
+    if ((size_t) oldtype >= USER_BREAK)
+    {
         return -1ULL;
     }
 
     // myb chck invalid state?
 
-    if (oldtype != nullptr) {
+    if (oldtype != nullptr)
+    {
         *oldtype = current_thread->thread_cancel_type_;
     }
     reinterpret_cast<UserThread *> (currentThread)->thread_cancel_type_ = (UserThread::THREAD_CANCEL_TYPE) type;
@@ -412,3 +434,33 @@ pid_t Syscall::waitpid(pid_t pid, int *status, int options)
     debug(SYSCALL,"Waitpid.\n");
     return ((UserThread*)currentThread)->getProcess()->waitpid(pid,status,options);
 }
+
+size_t Syscall::clock(void)
+{
+    uint64 time_start = reinterpret_cast<UserThread *>(currentThread)->getStartClockTime();
+    uint64 time_current = ArchThreads::rdtsc();
+
+    size_t value = ((time_current - time_start) / 54925);
+    return value;
+}
+
+size_t Syscall::thread_sleep(size_t seconds)
+{
+//     https://www.quora.com/What-is-the-time-for-a-processor-to-respond-to-an-interrupt-run-the-ISR-and-return-to-the-interrupted-program-given-the-following-details
+//     1 sec approx 18 tick
+//     current_ticks + amount of ticks for sleep -> tick value on which the thread should wake up
+//     should yield and leave the resources for threads that are still running
+//     return 0 if rescheduled
+
+    debug(SYSCALL, "Syscall::Sleep for %zu seconds\n", seconds);
+
+    uint32 current_number_of_ticks = Scheduler::instance()->getTicks();
+    uint32 should_sleep_for_x_ticks = 18 * seconds;
+    uint32 wake_up_after = current_number_of_ticks + should_sleep_for_x_ticks;
+    Scheduler::instance()->sleeping_threads_.push_back({currentThread, wake_up_after});
+    Scheduler::instance()->yield();
+    Scheduler::instance()->sleeping_threads_.erase({currentThread});
+
+    return 0;
+}
+

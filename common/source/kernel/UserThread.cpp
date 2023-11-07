@@ -11,7 +11,6 @@
 #include "FileSystemInfo.h"
 #include "Scheduler.h"
 
-//constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
                        [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid, [[maybe_unused]]void *argc, [[maybe_unused]]size_t args) :
         Thread(fs_info, filename, Thread::USER_THREAD),
@@ -64,7 +63,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
 //copy constructor
 UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *parent_process, uint32 terminal_number,
-                        ustl::string filename, FileSystemInfo *fs_info, size_t thread_id):
+                       ustl::string filename, FileSystemInfo *fs_info, size_t thread_id):
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(parent_process),
         tid_(thread_id),
@@ -133,4 +132,14 @@ void UserThread::makeAsynchronousCancel(){
     thread_cancel_type_ = UserThread::ASYNCHRONOUS;
     thread_cancel_state_ = UserThread::ENABLED;
     thread_cancellation_state_ = UserThread::ISCANCELED;
+}
+
+uint64 UserThread::getStartClockTime() const
+{
+    return start_clock_time_;
+}
+
+void UserThread::setStartClockTime(uint64 startClockTime)
+{
+    start_clock_time_ = startClockTime;
 }

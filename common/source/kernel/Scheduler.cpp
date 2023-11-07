@@ -50,6 +50,12 @@ void Scheduler::schedule()
     {
         if ((*it)->schedulable())
         {
+            auto sleeping_entry = sleeping_threads_.find(*it);
+            if (sleeping_entry != sleeping_threads_.end()) // Check if the thread is sleeping
+            {
+                if (sleeping_entry->second > getTicks())
+                    continue;
+            }
             currentThread = *it;
             break;
         }
