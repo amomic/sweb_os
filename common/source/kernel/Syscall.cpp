@@ -13,13 +13,11 @@
 #include "ArchMemory.h"
 #include "ArchThreads.h"
 
-size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
-{
+size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5) {
 
-    if (reinterpret_cast<UserThread *>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED)
-    {
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
@@ -31,8 +29,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
               syscall_number, arg1, arg1, arg2, arg2, arg3, arg3, arg4, arg4, arg5, arg5);
     }
 
-    switch (syscall_number)
-    {
+    switch (syscall_number) {
         case sc_sched_yield:
             Scheduler::instance()->yield();
             break;
@@ -88,7 +85,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = fork();
             break;
         case sc_execv:
-            return_value = execv(arg1, arg2);
+            return_value = execv(reinterpret_cast<char *>(arg1), reinterpret_cast<char **>(arg2));
             break;
         case sc_clock:
             return_value = clock();
@@ -103,10 +100,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
     }
-    if (reinterpret_cast<UserThread *>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED)
-    {
+    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
+        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
@@ -135,7 +131,6 @@ void Syscall::exit(size_t exit_code)
 
     pthread_exit((void *) exit_code);
 }
-
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
     //WARNING: this might fail if Kernel PageFaults are not handled
@@ -273,7 +268,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value) {
     debug(SYSCALL, "line before kill in pexit");
 
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
-    current_thread->process_->unmapPage();
+    current_thread->getProcess()->unmapPage();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
 
     current_thread->kill();
@@ -402,7 +397,7 @@ size_t Syscall::fork()
     return ret;
 }
 
-size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
+size_t Syscall::execv([[maybe_unused]]char* path, [[maybe_unused]]char* const* argv)
 {
     char* path_name = (char*)path;
 
@@ -410,7 +405,7 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
 
     if((size_t)path_name >= USER_BREAK ||
        (size_t)path_name == NULL ||
-       argv >= USER_BREAK)
+       (unsigned long long int) argv >= USER_BREAK)
     {
         debug(SYSCALL, "[Exec] Wrong address!");
         return -1U;
@@ -425,7 +420,7 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
     // Do we need anything else here?
     UserProcess* user_process = ((UserThread*)currentThread)->getProcess();
 
-    size_t ret = user_process->exec(path_name);
+    size_t ret = user_process->exec(path_name, (char* const*)argv);
 
     return ret;
 }
