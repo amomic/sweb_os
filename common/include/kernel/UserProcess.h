@@ -24,7 +24,7 @@ public:
     UserThread *createThread(size_t *thread, size_t *attr, void *(*start_routine)(void *), void *wrapper, uint64 argc, size_t args);
     size_t joinThread(size_t thread, pointer return_val);
     size_t detachThread(size_t thread);
-    size_t exec(char *path);
+    size_t exec(char *path, char *const *argv);
 
     ustl::atomic<size_t> threads_counter_for_id_ = 0;
     UserProcess* process_;
@@ -47,6 +47,7 @@ public:
     void unmapPage();
     void deleteAllThreadsExceptCurrent(UserThread* current_thread);
     bool CheckStack(size_t pos);
+    size_t checkExecArgs(char *const *args);
 
 
 
