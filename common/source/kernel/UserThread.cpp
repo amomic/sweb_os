@@ -47,10 +47,15 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
 
-    if(start_routine)
+    if (start_routine == NULL)
     {
-        user_registers_->rdi = reinterpret_cast<uint64>(start_routine);
-        user_registers_->rsi = reinterpret_cast<uint64>(argc);
+        user_registers_->rdi = reinterpret_cast<uint64>(argc);
+        user_registers_->rsi = reinterpret_cast<size_t>(args);
+    }
+    else
+    {
+        user_registers_->rdi = reinterpret_cast<size_t>(start_routine);
+        user_registers_->rsi = reinterpret_cast<size_t>(argc);
     }
 
 
