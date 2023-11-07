@@ -111,18 +111,19 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
     VfsSyscall::readdir(pathname, buffer, size);
 }
 
-void Syscall::exit(size_t exit_code) {
+void Syscall::exit(size_t exit_code)
+{
     debug(SYSCALL, "Syscall::exit: %zu\n", exit_code);
-    auto current = ((UserThread*)currentThread)->getProcess();
+    auto current = ((UserThread *) currentThread)->getProcess();
     current->process_retval_map_.push_back(ustl::make_pair(current->pid_, exit_code));
-    pthread_exit((void *) exit_code);
 
-    //todo cancel all threads with pcancel
-
-
-
-    pthread_exit((void *) -1);
+    for(auto it: (current->threads_map_))
+    {
+        ((UserThread*)(it.second))->makeAsynchronousCancel();
+        pthread_exit((void *) exit_code);
+    }
 }
+
 
 size_t Syscall::write(size_t fd, pointer buffer, size_t size) {
     //WARNING: this might fail if Kernel PageFaults are not handled
