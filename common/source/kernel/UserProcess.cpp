@@ -521,7 +521,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     if (target1 == ProcessRegistry::instance()->process_map_.end())
     {
         debug(USERPROCESS, "No process, maybe already terminated or didn't exist\n");
-        auto retval = process_retval_map_.find(pid);
+        auto retval = ProcessRegistry::instance()->process_retval_map_.find(pid);
         if (!retval)
         {
             *status = -1;
@@ -531,7 +531,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
         else
         {
             *status = retval->second;
-            process_retval_map_.erase(pid);
+            ProcessRegistry::instance()->process_retval_map_.erase(pid);
             ProcessRegistry::instance()->process_lock_.release();
             return pid;
         }
@@ -552,7 +552,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 
 
-    auto retval = process_retval_map_.find(pid);
+    auto retval = ProcessRegistry::instance()->process_retval_map_.find(pid);
     if (!retval)
     {
         *status = -1;
@@ -562,7 +562,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     else
     {
         *status = retval->second;
-        process_retval_map_.erase(pid);
+        ProcessRegistry::instance()->process_retval_map_.erase(pid);
         ProcessRegistry::instance()->process_lock_.release();
         return pid;
     }
@@ -571,13 +571,13 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 bool UserProcess::CheckStack(size_t pos) {
     auto thread = ((UserThread *) currentThread);
     for (auto it: threads_map_) {
-        debug(USERPROCESS, "%18zx", pos);
-        debug(USERPROCESS, "%18zx", thread->stack_start);
-        debug(USERPROCESS, "%18zx", thread->stack_end);
-        if (pos / PAGE_SIZE <= thread->stack_start && pos / PAGE_SIZE > thread->stack_end) {
-            debug(USERPROCESS, "%18zx", pos);
-            debug(USERPROCESS, "%18zx", thread->stack_start);
-            debug(USERPROCESS, "%18zx", thread->stack_end);
+        debug(USERPROCESS, "position %18zx", pos);
+        debug(USERPROCESS, "start %18zx", thread->stack_start);
+        debug(USERPROCESS, "end %18zx", thread->stack_end);
+        if (pos>= it.second->stack_start && pos < it.second->stack_end) {
+            debug(USERPROCESS, "if pos %18zx", pos);
+            debug(USERPROCESS, "if start %18zx", it.second->stack_start);
+            debug(USERPROCESS, "if end %18zx", it.second->stack_end);
 
             size_t ppn = PageManager::instance()->allocPPN();
             bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
