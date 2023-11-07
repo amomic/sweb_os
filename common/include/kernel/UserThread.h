@@ -4,7 +4,7 @@
 #include "ulist.h"
 #include "UserProcess.h"
 #include "Condition.h"
-#define STACK_SIZE 3
+#define STACK_SIZE 13
 class UserThread : public Thread
 {
 public:
