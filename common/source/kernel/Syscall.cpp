@@ -84,7 +84,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = fork();
             break;
         case sc_execv:
-            return_value = execv(arg1, arg2);
+            return_value = execv(reinterpret_cast<char *>(arg1), reinterpret_cast<char **>(arg2));
             break;
         default:
             return_value = -1;
@@ -372,7 +372,7 @@ size_t Syscall::fork()
     return ret;
 }
 
-size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
+size_t Syscall::execv([[maybe_unused]]char* path, [[maybe_unused]]char* const* argv)
 {
     char* path_name = (char*)path;
 
@@ -380,7 +380,7 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
 
     if((size_t)path_name >= USER_BREAK ||
        (size_t)path_name == NULL ||
-       argv >= USER_BREAK)
+       (unsigned long long int) argv >= USER_BREAK)
     {
         debug(SYSCALL, "[Exec] Wrong address!");
         return -1U;
@@ -395,7 +395,7 @@ size_t Syscall::execv([[maybe_unused]]size_t path, [[maybe_unused]]size_t argv)
     // Do we need anything else here?
     UserProcess* user_process = ((UserThread*)currentThread)->getProcess();
 
-    size_t ret = user_process->exec(path_name);
+    size_t ret = user_process->exec(path_name, (char* const*)argv);
 
     return ret;
 }

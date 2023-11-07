@@ -30,7 +30,7 @@ class Syscall
 
     static size_t fork();
 
-    static size_t execv(size_t path, size_t argv);
+    static size_t execv(char* path, char* const* argv);
 
 };
 
