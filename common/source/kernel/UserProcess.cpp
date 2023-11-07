@@ -603,7 +603,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     if (target1 == ProcessRegistry::instance()->process_map_.end())
     {
         debug(USERPROCESS, "No process, maybe already terminated or didn't exist\n");
-        auto retval = process_retval_map_.find(pid);
+        auto retval = ProcessRegistry::instance()->process_retval_map_.find(pid);
         if (!retval)
         {
             *status = -1;
@@ -613,7 +613,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
         else
         {
             *status = retval->second;
-            process_retval_map_.erase(pid);
+            ProcessRegistry::instance()->process_retval_map_.erase(pid);
             ProcessRegistry::instance()->process_lock_.release();
             return pid;
         }
@@ -634,7 +634,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 
 
-    auto retval = process_retval_map_.find(pid);
+    auto retval = ProcessRegistry::instance()->process_retval_map_.find(pid);
     if (!retval)
     {
         *status = -1;
@@ -644,7 +644,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     else
     {
         *status = retval->second;
-        process_retval_map_.erase(pid);
+        ProcessRegistry::instance()->process_retval_map_.erase(pid);
         ProcessRegistry::instance()->process_lock_.release();
         return pid;
     }
