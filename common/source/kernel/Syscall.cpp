@@ -437,11 +437,11 @@ pid_t Syscall::waitpid(pid_t pid, int *status, int options)
 
 size_t Syscall::clock(void)
 {
-   /* uint64 time_start = reinterpret_cast<UserThread *>(currentThread)->getStartClockTime();
+   uint64 time_start = reinterpret_cast<UserThread *>(currentThread)->getStartClockTime();
     uint64 time_current = ArchThreads::rdtsc();
 
     size_t value = ((time_current - time_start) / 54925);
-    return value;*/
+    return value;
    return 0;
 }
 
@@ -455,12 +455,12 @@ size_t Syscall::thread_sleep(size_t seconds)
 
     debug(SYSCALL, "Syscall::Sleep for %zu seconds\n", seconds);
 
-    /*uint32 current_number_of_ticks = Scheduler::instance()->getTicks();
+    uint32 current_number_of_ticks = Scheduler::instance()->getTicks();
     uint32 should_sleep_for_x_ticks = 18 * seconds;
     uint32 wake_up_after = current_number_of_ticks + should_sleep_for_x_ticks;
     Scheduler::instance()->sleeping_threads_.push_back({currentThread, wake_up_after});
     Scheduler::instance()->yield();
-    Scheduler::instance()->sleeping_threads_.erase({currentThread});*/
+    Scheduler::instance()->sleeping_threads_.erase({currentThread});
 
     return 0;
 }
