@@ -45,6 +45,8 @@ class ProcessRegistry : public Thread
     Mutex process_lock_;
 
     ustl::map<size_t, UserProcess*> process_map_;
+    ustl::map<size_t, size_t> process_retval_map_;
+    void updateExitCode(size_t code);
 private:
 
     char const **progs_;

@@ -78,7 +78,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
           }
           else
           {
-              Syscall::exit(9999);
+              Syscall::exit(1);
           }
       }
       else

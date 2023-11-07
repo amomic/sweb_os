@@ -126,13 +126,14 @@ void Syscall::exit(size_t exit_code)
 {
     debug(SYSCALL, "Syscall::exit: %zu\n", exit_code);
     auto current = ((UserThread *) currentThread)->getProcess();
-    current->process_retval_map_.push_back(ustl::make_pair(current->pid_, exit_code));
+    ProcessRegistry::instance()->updateExitCode(exit_code); //todo
 
     for(auto it: (current->threads_map_))
     {
         ((UserThread*)(it.second))->makeAsynchronousCancel();
-        pthread_exit((void *) exit_code);
     }
+
+    pthread_exit((void *) exit_code);
 }
 
 
@@ -442,7 +443,7 @@ size_t Syscall::clock(void)
 
     size_t value = ((time_current - time_start) / 54925);
     return value;
-   return 0;
+
 }
 
 size_t Syscall::thread_sleep(size_t seconds)
