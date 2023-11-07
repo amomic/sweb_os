@@ -7,8 +7,8 @@
  */
 pid_t waitpid(pid_t pid, int *status, int options)
 {
-  //return __syscall(sc_waitpid, (size_t)pid, (size_t)status, (size_t)options, 0x0, 0x0);
-    return  -1;
+  return __syscall(sc_waitpid, (size_t)pid, (size_t)status, (size_t)options, 0x0, 0x0);
+
 }
 
 
