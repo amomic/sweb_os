@@ -155,7 +155,7 @@ UserThread* UserProcess::createThread(size_t* thread, [[maybe_unused]]size_t *at
     process_ = this;
 
     debug(USERPROCESS, "Calling UserThread constructor!\n");
-    Thread *new_thread = new UserThread(filename_, fs_info_, terminal_number_, process_, start_routine, wrapper,threads_counter_for_id_, (void*)argc, args);
+    UserThread *new_thread = new UserThread(filename_, fs_info_, terminal_number_, process_, start_routine, wrapper,threads_counter_for_id_, (void*)argc, args);
     assert(new_thread && "Failed to create new thread\n");
 
     Scheduler::instance()->addNewThread(new_thread);
@@ -361,6 +361,7 @@ void UserProcess::unmapPage() {
         if(valid)
             currentThread->loader_->arch_memory_.unmapPage(it);
     }
+
 }
 
 size_t UserProcess::exec(char* path){
@@ -489,7 +490,7 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
     auto calling_thread = reinterpret_cast<UserThread*>(current_thread);
     auto calling_process = calling_thread->getProcess();
 
-    ustl::map<size_t, Thread*>::iterator it;
+    ustl::map<size_t, UserThread*>::iterator it;
 
    calling_process->threads_lock_.acquire();
 
@@ -566,29 +567,24 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
         return pid;
     }
 }
-bool UserProcess::CheckStack(size_t pos)
-{
-    auto thread = ((UserThread*)currentThread);
-    for (auto it: threads_map_)
-    {
-        debug(USERPROCESS , "%18zx", pos);
-        debug(USERPROCESS , "%18zx", thread->stack_start);
-        debug(USERPROCESS , "%18zx", thread->stack_end);
-        if(pos/PAGE_SIZE <= thread->stack_start && pos/PAGE_SIZE > thread->stack_end)
-        {
-            debug(USERPROCESS , "%18zx", pos);
-            debug(USERPROCESS , "%18zx", thread->stack_start);
-            debug(USERPROCESS , "%18zx", thread->stack_end);
+
+bool UserProcess::CheckStack(size_t pos) {
+    auto thread = ((UserThread *) currentThread);
+    for (auto it: threads_map_) {
+        debug(USERPROCESS, "%18zx", pos);
+        debug(USERPROCESS, "%18zx", thread->stack_start);
+        debug(USERPROCESS, "%18zx", thread->stack_end);
+        if (pos / PAGE_SIZE <= thread->stack_start && pos / PAGE_SIZE > thread->stack_end) {
+            debug(USERPROCESS, "%18zx", pos);
+            debug(USERPROCESS, "%18zx", thread->stack_start);
+            debug(USERPROCESS, "%18zx", thread->stack_end);
 
             size_t ppn = PageManager::instance()->allocPPN();
-             bool mapped = it.second->loader_->arch_memory_.mapPage(pos/PAGE_SIZE, ppn, true);
-            if(!mapped)
-            {
+            bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
+            if (!mapped) {
                 PageManager::instance()->freePPN(ppn);
-            }
-            else
-            {
-                thread->virtual_pages_.push_back(pos/PAGE_SIZE);
+            } else {
+                thread->virtual_pages_.push_back(pos / PAGE_SIZE);
             }
             return true;
         }
@@ -597,4 +593,3 @@ bool UserProcess::CheckStack(size_t pos)
 
     return false;
 }
-

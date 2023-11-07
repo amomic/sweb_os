@@ -7,8 +7,8 @@
 #include "Loader.h"
 #include "Syscall.h"
 #include "ArchThreads.h"
-#include "paging-definitions.h"
 #include "UserThread.h"
+#include "paging-definitions.h"
 extern "C" void arch_contextSwitch();
 
 const size_t PageFaultHandler::null_reference_check_border_ = PAGE_SIZE;
