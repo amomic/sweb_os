@@ -4,7 +4,7 @@
 #include "ulist.h"
 #include "UserProcess.h"
 #include "Condition.h"
-
+#define STACK_SIZE 3
 class UserThread : public Thread
 {
 public:
@@ -65,13 +65,16 @@ public:
     UserThread *waited_by_ = nullptr;
 
     Condition join_condition_;
-    size_t virtual_pages_;
+    ustl::vector<size_t> virtual_pages_;
 
     void makeAsynchronousCancel();
 
     uint64 getStartClockTime() const;
 
     void setStartClockTime(uint64 startClockTime);
+    size_t stack_start;
+    size_t stack_end;
+
 
 private:
     ustl::string filename_;
