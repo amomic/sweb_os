@@ -364,14 +364,19 @@ void UserProcess::unmapPage() {
 
 }
 
-size_t UserProcess::exec(char* path){
+size_t UserProcess::exec(char* path, char* const* argv){
+
+    size_t args_num = checkExecArgs(argv);
+
+    if (args_num == (size_t)-1)
+        return -1;
 
     debug(USERPROCESS, "[Exec] In UserProcess!");
 
     size_t path_len = strlen(path);
 
     if((size_t)path == NULL ||
-            (size_t)path >= USER_BREAK)
+       (size_t)path >= USER_BREAK)
     {
         debug(USERPROCESS, "[Exec] Path wrong in UserProcess!");
         return -1;
@@ -420,7 +425,45 @@ size_t UserProcess::exec(char* path){
         return -1U;
     }
 
-    // TODO A function for deleting all threads but current
+    if(args_num != 0){
+        // Allocate a physical page for arguments
+        uint64 args_page = PageManager::instance()->allocPPN();
+
+        // Map the virtual page to the physical page
+        uint64 virtual_page = 0;
+        bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
+        assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
+
+        // Calculate the ident address
+        uint64 ident_addr = loader_->arch_memory_.getIdentAddressOfPPN(args_page, PAGE_SIZE);
+        size_t num_of_args = args_num + 1;
+
+        // Initialize virtual and physical addresses
+        uint64 start_p = (num_of_args * sizeof(char*)) + ident_addr;
+        uint64 start_v = (num_of_args * sizeof(char*));
+
+        size_t i = 0, j = 0;
+
+        char* const* args = argv;
+
+        for (i = 0;i < args_num; i++) {
+            *reinterpret_cast<uint64*>(ident_addr) = start_v;
+            ident_addr += sizeof(pointer);
+            j = 0;
+            while (args[i][j] != '\0') {
+                uint64 tmp_addr = start_p + j;
+                *reinterpret_cast<char*>(tmp_addr) = args[i][j];
+                j++;
+            }
+
+            *reinterpret_cast<char*>(start_p + j) = 0;
+
+            uint64 increment = sizeof(char) * (j + 1);
+            start_v += increment;
+            start_p += increment;
+        }
+    }
+
     deleteAllThreadsExceptCurrent(user_thread);
 
     while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
@@ -459,7 +502,7 @@ size_t UserProcess::exec(char* path){
 
     //new thread
     UserThread* new_user_thread = new UserThread(filename_, fs_info_, terminal_number_, this,
-                                                 NULL, loader_->getEntryFunction(), new_tid, 0, NULL);
+                                                 NULL, loader_->getEntryFunction(), new_tid, (void*)args_num, NULL);
 
     debug(USERPROCESS, "[Exec] Created a new thread!");
 
@@ -492,7 +535,7 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
 
     ustl::map<size_t, UserThread*>::iterator it;
 
-   calling_process->threads_lock_.acquire();
+    calling_process->threads_lock_.acquire();
 
     for(it = calling_process->threads_map_.begin(); it !=calling_process->threads_map_.end(); it++){
         if(it->second == calling_thread)
@@ -500,7 +543,46 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
         auto handler = reinterpret_cast<UserThread*>(it->second);
         handler->makeAsynchronousCancel();
     }
-   calling_process->threads_lock_.release();
+    calling_process->threads_lock_.release();
+}
+
+size_t UserProcess::checkExecArgs(char *const *args) {
+    size_t check_arg_size = 0;
+    size_t number_of_args = 0;
+    size_t itterator;
+
+    if (args == nullptr) {
+        return 0;
+    }
+
+    for (itterator = 0; args[itterator] != nullptr; itterator++) {
+        if (reinterpret_cast<size_t>(args[itterator]) >= USER_BREAK)
+            return -1;
+
+        size_t tmp_size = 0;
+        while (args[itterator][tmp_size] != '\0') {
+            tmp_size++;
+        }
+
+        if(strlen(args[itterator]) > 200)
+            return -1;
+
+        if (reinterpret_cast<size_t>(args[itterator] + tmp_size + 1) >= USER_BREAK)
+            return -1;
+
+        check_arg_size += tmp_size + 1;
+    }
+
+    number_of_args = itterator;
+    check_arg_size += itterator * sizeof(size_t);
+
+    if (check_arg_size >= PAGE_SIZE)
+        return static_cast<size_t>(-1);
+
+    if(number_of_args > 16)
+        return -1;
+
+    return number_of_args;
 }
 
 pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
@@ -521,7 +603,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     if (target1 == ProcessRegistry::instance()->process_map_.end())
     {
         debug(USERPROCESS, "No process, maybe already terminated or didn't exist\n");
-        auto retval = ProcessRegistry::instance()->process_retval_map_.find(pid);
+        auto retval = process_retval_map_.find(pid);
         if (!retval)
         {
             *status = -1;
@@ -531,7 +613,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
         else
         {
             *status = retval->second;
-            ProcessRegistry::instance()->process_retval_map_.erase(pid);
+            process_retval_map_.erase(pid);
             ProcessRegistry::instance()->process_lock_.release();
             return pid;
         }
@@ -552,7 +634,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 
 
-    auto retval = ProcessRegistry::instance()->process_retval_map_.find(pid);
+    auto retval = process_retval_map_.find(pid);
     if (!retval)
     {
         *status = -1;
@@ -562,7 +644,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     else
     {
         *status = retval->second;
-        ProcessRegistry::instance()->process_retval_map_.erase(pid);
+        process_retval_map_.erase(pid);
         ProcessRegistry::instance()->process_lock_.release();
         return pid;
     }

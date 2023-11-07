@@ -27,12 +27,13 @@ public:
     UserThread *createThread(size_t *thread, size_t *attr, void *(*start_routine)(void *), void *wrapper, uint64 argc, size_t args);
     size_t joinThread(size_t thread, pointer return_val);
     size_t detachThread(size_t thread);
-    size_t exec(char *path);
+    size_t exec(char *path, char *const *argv);
 
     ustl::atomic<size_t> threads_counter_for_id_ = 0;
     UserProcess* process_;
     ustl::map<size_t, UserThread *> threads_map_;
     ustl::map<size_t, void*> thread_retval_map;
+    ustl::map<size_t, size_t> process_retval_map_;
 
     Mutex threads_lock_;
     Mutex pages_lock_;
@@ -53,8 +54,10 @@ public:
     void CleanThreads(size_t thread);
     void unmapPage();
     void deleteAllThreadsExceptCurrent(UserThread* current_thread);
-    pid_t waitpid(pid_t pid, int *status, int options);
     bool CheckStack(size_t pos);
+    size_t checkExecArgs(char *const *args);
+
+    pid_t waitpid(pid_t pid, int *status, int options);
 
 
 
@@ -64,6 +67,7 @@ private:
     ustl::string filename_;
     FileSystemInfo *fs_info_;
     uint32 terminal_number_;
+
 
 
 };
