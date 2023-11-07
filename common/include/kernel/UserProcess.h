@@ -31,7 +31,7 @@ public:
 
     ustl::atomic<size_t> threads_counter_for_id_ = 0;
     UserProcess* process_;
-    ustl::map<size_t, Thread *> threads_map_;
+    ustl::map<size_t, UserThread *> threads_map_;
     ustl::map<size_t, void*> thread_retval_map;
     ustl::map<size_t, size_t> process_retval_map_;
 
@@ -64,7 +64,6 @@ private:
     ustl::string filename_;
     FileSystemInfo *fs_info_;
     uint32 terminal_number_;
-
 
 
 };
