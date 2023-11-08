@@ -43,7 +43,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
     ArchThreads::createUserRegisters(user_registers_, wrapper,
-                                     (void *)(stack_start - sizeof (pointer)),
+                                     (void *)(USER_BREAK - sizeof (pointer) - (STACK_SIZE*tid*PAGE_SIZE)),
                                      getKernelStackStartPointer());
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
@@ -82,7 +82,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
     virtual_pages_ = process_thread_pointer.virtual_pages_;
 
     ArchThreads::createUserRegisters(user_registers_, process_thread_pointer.wrapper_,
-                                     (void *)(stack_start- sizeof (pointer)),
+                                     (void *)(USER_BREAK - sizeof (pointer) - (STACK_SIZE*thread_id*PAGE_SIZE)),
                                      getKernelStackStartPointer());
 
     memcpy(this->user_registers_, currentThread->user_registers_, sizeof(ArchThreadRegisters));
