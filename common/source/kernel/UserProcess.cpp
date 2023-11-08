@@ -656,19 +656,22 @@ bool UserProcess::CheckStack(size_t pos) {
         debug(USERPROCESS, "position %18zx", pos);
         debug(USERPROCESS, "start %18zx", thread->stack_start);
         debug(USERPROCESS, "end %18zx", thread->stack_end);
-        if (pos>= it.second->stack_start && pos < it.second->stack_end) {
+        if (pos>= (it.second->stack_start - (STACK_SIZE*PAGE_SIZE)) && (pos <= it.second->stack_end)) {
             debug(USERPROCESS, "if pos %18zx", pos);
             debug(USERPROCESS, "if start %18zx", it.second->stack_start);
             debug(USERPROCESS, "if end %18zx", it.second->stack_end);
 
-            size_t ppn = PageManager::instance()->allocPPN();
-            bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
-            if (!mapped) {
-                PageManager::instance()->freePPN(ppn);
-            } else {
-                thread->virtual_pages_.push_back(pos / PAGE_SIZE);
+            if(!thread->loader_->arch_memory_.checkAddressValid(pos))
+            {
+                size_t ppn = PageManager::instance()->allocPPN();
+                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
+                if (!mapped) {
+                    PageManager::instance()->freePPN(ppn);
+                } else {
+                    thread->virtual_pages_.push_back(pos / PAGE_SIZE);
+                }
+                return true;
             }
-            return true;
         }
     }
 
