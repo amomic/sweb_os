@@ -121,13 +121,8 @@ void Syscall::pseudols(const char *pathname, char *buffer, size_t size) {
 void Syscall::exit(size_t exit_code)
 {
     debug(SYSCALL, "Syscall::exit: %zu\n", exit_code);
-    auto current = ((UserThread *) currentThread)->getProcess();
+   // auto current = ((UserThread *) currentThread);
     ProcessRegistry::instance()->updateExitCode(exit_code); //todo
-
-    for(auto it: (current->threads_map_))
-    {
-        ((UserThread*)(it.second))->makeAsynchronousCancel();
-    }
 
     pthread_exit((void *) exit_code);
 }
