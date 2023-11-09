@@ -9,6 +9,8 @@
 #include "ArchThreads.h"
 #include "UserThread.h"
 #include "paging-definitions.h"
+#include "PageManager.h"
+
 extern "C" void arch_contextSwitch();
 
 const size_t PageFaultHandler::null_reference_check_border_ = PAGE_SIZE;
@@ -67,6 +69,15 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
+    ustl::map<size_t, bool> pages;
+
+    //4 to handle reserved stack pages
+    for(int i = 0; i < 4; i++)
+    {
+        uint32 pos = PageManager::instance()->allocPPN();
+        pages[pos] = false;
+    }
+
     if (checkPageFaultIsValid(address, user, present, switch_to_us))
   {
       debug(USERPROCESS , "%18zx", address);
@@ -83,6 +94,17 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
       }
       else
           currentThread->loader_->loadPage(address);
+
+//-----------------------------------------COW--------------------------------------------------------------------------
+      if(currentThread->loader_->arch_memory_.isCowSet(address))
+      {
+          debug(PAGEFAULT, "[COW] Pagefault happened, cow detected!");
+
+          currentThread->loader_->arch_memory_.cowPageCopy(address, &pages);
+
+          debug(PAGEFAULT, "[COW] Page copied!");
+      }
+//----------------------------------------------------------------------------------------------------------------------
 
   }
   else

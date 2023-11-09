@@ -4,6 +4,7 @@
 #include "offsets.h"
 #include "paging-definitions.h"
 #include "Mutex.h"
+#include "umap.h"
 
 struct ArchMemoryMapping
 {
@@ -103,6 +104,9 @@ class ArchMemory
     /// Prevents accidental copying/assignment, can be implemented if needed
     //ArchMemory(ArchMemory const &src) = delete;
     ArchMemory &operator=(ArchMemory const &src) = delete;
+
+    bool isCowSet(uint64 virt_address);
+    void cowPageCopy(uint64 virt_address, ustl::map<size_t, bool> *alloc_pages);
 
   private:
     /**
