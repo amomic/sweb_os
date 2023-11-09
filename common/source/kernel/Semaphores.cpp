@@ -28,16 +28,14 @@ void Semaphore::wait() {
         lockWaitersList();
 
 
-        lock_.acquire();
         if(semaphore_>0)
         {
-            lock_.release();
+
             unlockWaitersList();
-            lock_.acquire();
+
 
             break;
         }
-        lock_.release();
         doChecksBeforeWaiting();
 
         // Block the current thread until signaled
@@ -57,11 +55,10 @@ void Semaphore::post() {
     lockWaitersList();
     lock_.acquire();
     semaphore_++;
-
+    lock_.release();
     // Wake up a waiting thread
     Thread* thread_to_be_woken_up = popBackThreadFromWaitersList();
 
-    lock_.release();
     unlockWaitersList();
     if(thread_to_be_woken_up != nullptr)
         Scheduler::instance()->wake(thread_to_be_woken_up);
