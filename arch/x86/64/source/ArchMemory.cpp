@@ -5,6 +5,8 @@
 #include "kstring.h"
 #include "ArchThreads.h"
 #include "Thread.h"
+#include "UserThread.h"
+#include "Thread.h"
 
 PageMapLevel4Entry kernel_page_map_level_4[PAGE_MAP_LEVEL_4_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTER_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -46,7 +48,11 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
       if(parent_pml4[pml4i].present)
       {
           //set cow bit
+          parent_pml4[pml4i].cow = 1;
           //set writable bit
+          parent_pml4[pml4i].writeable = 0;
+
+          //TODO add a cow reference!
 
           arch_mem_lock.release();
           pdpt_ = PageManager::instance()->allocPPN();
@@ -70,7 +76,13 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
               if(parent_pdpt[pdpti].pd.present)
               {
                   //set cow bit
+                  parent_pdpt[pdpti].pd.cow = 1;
                   //set writable bit
+                  parent_pdpt[pdpti].pd.writeable = 0;
+
+                  //TODO add a cow reference!
+                  //TODO delete memcpy's!
+
                   arch_mem_lock.release();
                   pd_ = PageManager::instance()->allocPPN();
                   arch_mem_lock.acquire();
@@ -93,7 +105,13 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                       if(parent_pd[pdi].pt.present)
                       {
                           //set cow bit
+                          parent_pd[pdi].pt.cow = 1;
                           //set writable bit
+                          parent_pd[pdi].pt.writeable = 0;
+
+                          //TODO add a cow reference!
+                          //TODO delete memcpy's!
+
                           arch_mem_lock.release();
                           pt_ = PageManager::instance()->allocPPN();
                           arch_mem_lock.acquire();
@@ -116,7 +134,13 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                               if(parent_pt[pti].present)
                               {
                                   //set cow bit
+                                  parent_pt[pti].cow = 1;
                                   //set writable bit
+                                  parent_pt[pti].writeable = 0;
+
+                                  //TODO add a cow reference!
+                                  //TODO delete memcpy's!
+
                                   end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
                                   child_pt[pti].page_ppn = end_level_;
                                   void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
@@ -427,4 +451,54 @@ PageMapLevel4Entry* ArchMemory::getRootOfKernelPagingStructure()
 uint64 ArchMemory::getPML4()
 {
     return page_map_level_4_;
+}
+
+bool ArchMemory::isCowSet(uint64 virt_address)
+{
+    ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_address / PAGE_SIZE);
+
+//----------------------------------------PML4--------------------------------------------------------------------------
+    PageMapLevel4Entry *pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
+
+    if(!pml4[mapping.pml4i].present)
+    {
+        return false;
+    }
+//----------------------------------------PDPT--------------------------------------------------------------------------
+    PageDirPointerTableEntry *pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(pml4[mapping.pml4i].page_ppn);
+
+    if(!pdpt[mapping.pml4i].pd.present)
+    {
+        return false;
+    }
+//------------------------------------------PD--------------------------------------------------------------------------
+    PageDirEntry *pd = (PageDirEntry*) getIdentAddressOfPPN(pdpt[mapping.pdpti].pd.page_ppn);
+
+    if(!pd[mapping.pdi].pt.present)
+    {
+        return false;
+    }
+//------------------------------------------PT--------------------------------------------------------------------------
+    PageTableEntry *pt = (PageTableEntry*) getIdentAddressOfPPN(pd[mapping.pdi].pt.page_ppn);
+
+    if(!pt[mapping.pti].present)
+    {
+        return false;
+    }
+//----------------------------------------Final check-------------------------------------------------------------------
+    if (mapping.pt[mapping.pti].cow == 1)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+
+void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unused]]ustl::map<size_t, bool> *alloc_pages)
+{
+    debug(A_MEMORY, "[COW] Copying pages for COW!");
+    //TODO
 }
