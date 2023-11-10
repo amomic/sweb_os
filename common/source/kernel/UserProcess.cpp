@@ -652,17 +652,15 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 bool UserProcess::CheckStack(size_t pos) {
     auto thread = ((UserThread *) currentThread);
-    for (auto it: threads_map_) {
+    for (auto &it: threads_map_) {
         debug(USERPROCESS, "position %18zx", pos);
         debug(USERPROCESS, "start %18zx", thread->stack_start);
         debug(USERPROCESS, "end %18zx", thread->stack_end);
-        if (pos>= (it.second->stack_start - (STACK_SIZE*PAGE_SIZE)) && (pos <= it.second->stack_end)) {
+        if (pos > it.second->stack_end && pos <= it.second->stack_start && pos >= it.second->stack_start - (PAGE_SIZE*(STACK_SIZE-1))) {
             debug(USERPROCESS, "if pos %18zx", pos);
             debug(USERPROCESS, "if start %18zx", it.second->stack_start);
             debug(USERPROCESS, "if end %18zx", it.second->stack_end);
 
-            if(!thread->loader_->arch_memory_.checkAddressValid(pos))
-            {
                 size_t ppn = PageManager::instance()->allocPPN();
                 bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
                 if (!mapped) {
@@ -672,7 +670,7 @@ bool UserProcess::CheckStack(size_t pos) {
                 }
                 return true;
             }
-        }
+
     }
 
     return false;
