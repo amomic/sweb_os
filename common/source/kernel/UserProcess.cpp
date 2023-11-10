@@ -467,10 +467,13 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     deleteAllThreadsExceptCurrent(user_thread);
 
+
+    threads_lock_.acquire();
     while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
     {
         Scheduler::instance()->yield();
     }
+    threads_lock_.release();
 
     //TODO delete this if
     if(old_fd == NULL || old_loader == NULL || user_thread == NULL)
