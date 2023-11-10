@@ -652,7 +652,6 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 bool UserProcess::CheckStack(size_t pos) {
     auto thread = ((UserThread *) currentThread);
-    threads_lock_.acquire();
     for (auto &it: threads_map_) {
         debug(USERPROCESS, "position %18zx", pos);
         debug(USERPROCESS, "start %18zx", thread->stack_start);
@@ -664,21 +663,19 @@ bool UserProcess::CheckStack(size_t pos) {
 
                 size_t ppn = PageManager::instance()->allocPPN();
                 size_t new_vpn =  pos & ~(PAGE_SIZE - 1);
-                process_->loader_->arch_memory_.arch_mem_lock.acquire();
+
                 bool mapped = it.second->loader_->arch_memory_.mapPage(new_vpn / PAGE_SIZE, ppn, true);
-                process_->loader_->arch_memory_.arch_mem_lock.release();
+
                 if (!mapped) {
                     PageManager::instance()->freePPN(ppn);
                 } else {
                     thread->virtual_pages_.push_back(pos / PAGE_SIZE);
                 }
 
-                threads_lock_.release();
                 return true;
             }
 
     }
 
-    threads_lock_.release();
     return false;
 }
