@@ -366,7 +366,8 @@ void UserProcess::unmapPage() {
 
 size_t UserProcess::exec(char* path, char* const* argv){
 
-    size_t args_num = checkExecArgs(argv);
+    size_t args_num = 0;
+    args_num = checkExecArgs(argv);
 
     if (args_num == (size_t)-1)
         return -1;

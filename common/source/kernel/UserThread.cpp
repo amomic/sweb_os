@@ -13,7 +13,7 @@
 
 //constructor
 UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number, UserProcess *userProcess,
-                       [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid, [[maybe_unused]]void *argc, [[maybe_unused]]size_t args) :
+                       [[maybe_unused]]void *(*start_routine)(void *), void *wrapper, size_t tid, [[maybe_unused]]void* argc, [[maybe_unused]]size_t args) :
         Thread(fs_info, filename, Thread::USER_THREAD),
         process_(userProcess),
         tid_(tid),
@@ -49,10 +49,13 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     ArchThreads::setAddressSpace(this, loader_->arch_memory_);
 
-    if (start_routine)
+    if (start_routine != NULL)
     {
-        user_registers_->rdi = reinterpret_cast<uint64>(start_routine);
-        user_registers_->rsi = reinterpret_cast<uint64>(argc);
+        user_registers_->rdi = reinterpret_cast<size_t>(start_routine);
+        user_registers_->rsi = reinterpret_cast<size_t>(argc);
+    } else {
+        user_registers_->rdi = reinterpret_cast<uint64>(argc);
+        user_registers_->rsi = reinterpret_cast<size_t>(args);
     }
 
 
