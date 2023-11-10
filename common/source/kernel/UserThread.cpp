@@ -81,6 +81,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
     debug(USERTHREAD, "Thread ID is: %lu \n", tid_);
     virtual_pages_ = process_thread_pointer.virtual_pages_;
 
+    loader_->arch_memory_.arch_mem_lock.release();
     ArchThreads::createUserRegisters(user_registers_, process_thread_pointer.wrapper_,
                                      (void *)(USER_BREAK - sizeof (pointer) - (STACK_SIZE*thread_id*PAGE_SIZE)),
                                      getKernelStackStartPointer());
@@ -106,7 +107,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
 UserThread::~UserThread()
 {
     debug(USERTHREAD, "DESTRUCTOR: UserThread %zu in UserProcess %s\n", tid_, filename_.c_str());
-    process_->CleanThreads(tid_);
+    process_->CleanThreads(currentThread->getTID());
 
 }
 

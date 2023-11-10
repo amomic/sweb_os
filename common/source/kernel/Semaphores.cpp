@@ -22,18 +22,12 @@ void Semaphore::wait() {
 
     while (semaphore_ <= 0) {
 
-
-
         checkCurrentThreadStillWaitingOnAnotherLock();
         lockWaitersList();
 
-
         if(semaphore_>0)
         {
-
             unlockWaitersList();
-
-
             break;
         }
         doChecksBeforeWaiting();
@@ -42,8 +36,6 @@ void Semaphore::wait() {
         sleepAndRelease();
 
         currentThread->lock_waiting_on_=0;
-
-
     }
     semaphore_--;
 
