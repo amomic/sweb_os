@@ -675,6 +675,5 @@ bool UserProcess::CheckStack(size_t pos) {
         }
     }
 
-
     return false;
 }
