@@ -404,14 +404,17 @@ size_t UserProcess::exec(char* path, char* const* argv){
     int32 new_fd = VfsSyscall::open(kernel_path, O_RDONLY);
     Loader *new_loader = nullptr;
 
+    threads_lock_.acquire();
     if(new_fd >= 0){
         fd_ = new_fd;
         new_loader = new Loader(new_fd);
     } else {
         VfsSyscall::close(new_fd);
         delete[] kernel_path;
+        threads_lock_.release();
         return -1;
     }
+    threads_lock_.release();
 
     if(!new_loader || new_fd < 0){
         debug(USERPROCESS, "[Exec] Couldn't open new fd!");
