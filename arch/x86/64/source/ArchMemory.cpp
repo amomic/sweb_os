@@ -500,5 +500,45 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unused]]ustl::map<size_t, bool> *alloc_pages)
 {
     debug(A_MEMORY, "[COW] Copying pages for COW!");
-    //TODO
+    
+    ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+
+    //TODO add an iterator for the allocated pages?
+
+//----------------------------------------PML4--------------------------------------------------------------------------
+    if(mapping.pml4[mapping.pml4i].cow)
+    {
+        //TODO need to check if the reference is set
+        mapping.pml4[mapping.pml4i].cow = 0;
+        mapping.pml4[mapping.pml4i].writeable = 1;
+
+        //TODO copy the pdpt? somehow
+    }
+//----------------------------------------PDPT--------------------------------------------------------------------------
+    if(mapping.pdpt[mapping.pdpti].pd.cow)
+    {
+        //TODO need to check if the reference is set
+        mapping.pdpt[mapping.pdpti].pd.cow = 0;
+        mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+
+        //TODO copy the pd?
+    }
+//------------------------------------------PD--------------------------------------------------------------------------
+    if(mapping.pd[mapping.pdi].pt.cow)
+    {
+        //TODO need to check if the reference is set
+        mapping.pd[mapping.pdi].pt.cow = 0;
+        mapping.pd[mapping.pdi].pt.writeable = 1;
+
+        //TODO copy the pt?
+    }
+//------------------------------------------PT--------------------------------------------------------------------------
+    if(mapping.pt[mapping.pti].cow)
+    {
+        //TODO need to check if the reference is set
+        mapping.pt[mapping.pti].cow = 0;
+        mapping.pt[mapping.pti].writeable = 1;
+
+        //TODO memcpy here?
+    }
 }
