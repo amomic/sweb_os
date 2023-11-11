@@ -148,3 +148,178 @@ void UserThread::setStartClockTime(uint64 startClockTime)
 {
     start_clock_time_ = startClockTime;
 }
+
+void UserThread::setProcess(UserProcess *process)
+{
+    process_ = process;
+}
+
+size_t UserThread::getTid() const
+{
+    return tid_;
+}
+
+void UserThread::setTid(size_t tid)
+{
+    tid_ = tid;
+}
+
+size_t UserThread::getOffset() const
+{
+    return offset_;
+}
+
+void UserThread::setOffset(size_t offset)
+{
+    offset_ = offset;
+}
+
+void *UserThread::getWrapper() const
+{
+    return wrapper_;
+}
+
+void UserThread::setWrapper(void *wrapper)
+{
+    wrapper_ = wrapper;
+}
+
+UserThread::THREAD_CANCEL_TYPE UserThread::getThreadCancelType() const
+{
+    return thread_cancel_type_;
+}
+
+void UserThread::setThreadCancelType(UserThread::THREAD_CANCEL_TYPE threadCancelType)
+{
+    thread_cancel_type_ = threadCancelType;
+}
+
+UserThread::THREAD_CANCEL_STATE UserThread::getThreadCancelState() const
+{
+    return thread_cancel_state_;
+}
+
+void UserThread::setThreadCancelState(UserThread::THREAD_CANCEL_STATE threadCancelState)
+{
+    thread_cancel_state_ = threadCancelState;
+}
+
+UserThread::THREAD_CANCELATION UserThread::getThreadCancellationState() const
+{
+    return thread_cancellation_state_;
+}
+
+void UserThread::setThreadCancellationState(UserThread::THREAD_CANCELATION threadCancellationState)
+{
+    thread_cancellation_state_ = threadCancellationState;
+}
+
+const Mutex &UserThread::getStateJoinLock() const
+{
+    return state_join_lock_;
+}
+
+UserThread::DETATCH_STATE UserThread::getTypeOfJoin() const
+{
+    return type_of_join_;
+}
+
+void UserThread::setTypeOfJoin(UserThread::DETATCH_STATE typeOfJoin)
+{
+    type_of_join_ = typeOfJoin;
+}
+
+UserThread *UserThread::getWaitingFor() const
+{
+    return waiting_for_;
+}
+
+void UserThread::setWaitingFor(UserThread *waitingFor)
+{
+    waiting_for_ = waitingFor;
+}
+
+UserThread *UserThread::getWaitedBy() const
+{
+    return waited_by_;
+}
+
+void UserThread::setWaitedBy(UserThread *waitedBy)
+{
+    waited_by_ = waitedBy;
+}
+
+const Condition &UserThread::getJoinCondition() const
+{
+    return join_condition_;
+}
+
+const ustl::vector<size_t> &UserThread::getVirtualPages() const
+{
+    return virtual_pages_;
+}
+
+void UserThread::setVirtualPages(const ustl::vector<size_t> &virtualPages)
+{
+    virtual_pages_ = virtualPages;
+}
+
+size_t UserThread::getStackStart() const
+{
+    return stack_start;
+}
+
+void UserThread::setStackStart(size_t stackStart)
+{
+    stack_start = stackStart;
+}
+
+size_t UserThread::getStackEnd() const
+{
+    return stack_end;
+}
+
+void UserThread::setStackEnd(size_t stackEnd)
+{
+    stack_end = stackEnd;
+}
+
+const ustl::string &UserThread::getFilename() const
+{
+    return filename_;
+}
+
+void UserThread::setFilename(const ustl::string &filename)
+{
+    filename_ = filename;
+}
+
+FileSystemInfo *UserThread::getFsInfo() const
+{
+    return fs_info_;
+}
+
+void UserThread::setFsInfo(FileSystemInfo *fsInfo)
+{
+    fs_info_ = fsInfo;
+}
+
+uint32 UserThread::getTerminalNumber() const
+{
+    return terminal_number_;
+}
+
+void UserThread::setTerminalNumber(uint32 terminalNumber)
+{
+    terminal_number_ = terminalNumber;
+}
+
+size_t UserThread::getJoinTid() const
+{
+    return join_TID;
+}
+
+void UserThread::setJoinTid(size_t joinTid)
+{
+    join_TID = joinTid;
+}

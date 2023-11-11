@@ -15,9 +15,10 @@
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5) {
 
-    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+    UserThread *pUserThread = reinterpret_cast<UserThread *>(currentThread);
+    if (pUserThread->getThreadCancellationState() == UserThread::ISCANCELED &&
+        pUserThread->getThreadCancelState() == UserThread::ENABLED &&
+        pUserThread->getThreadCancelType() == UserThread::DEFERRED) {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
@@ -100,9 +101,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
     }
-    if (reinterpret_cast<UserThread*>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_state_ == UserThread::ENABLED &&
-        reinterpret_cast<UserThread*>(currentThread)->thread_cancel_type_ == UserThread::DEFERRED) {
+    if (pUserThread->getThreadCancellationState() == UserThread::ISCANCELED &&
+        pUserThread->getThreadCancelState() == UserThread::ENABLED &&
+        pUserThread->getThreadCancelType() == UserThread::DEFERRED) {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
@@ -283,7 +284,8 @@ size_t Syscall::pthread_detach(size_t thread) {
 size_t Syscall::pthread_cancel(size_t thread_id) {
     debug(SYSCALL, "Syscall::pthread_cancel is being called with the following arguments: %zu \n", thread_id);
     // Get Current User Process by casting current user thread into our custom user thread object and calling getProcess() on the object
-    UserProcess *currentUserProcess = reinterpret_cast<UserThread *>(currentThread)->getProcess();
+    UserThread *pUserThread = reinterpret_cast<UserThread *>(currentThread);
+    UserProcess *currentUserProcess = pUserThread->getProcess();
 
     //Lock The thread table
     debug(CANCEL_INFO, "Syscall::pthread_cancel has locked threads map\n");
@@ -295,11 +297,11 @@ size_t Syscall::pthread_cancel(size_t thread_id) {
         // get the thread from table with iterator
         UserThread *cancelled_thread = reinterpret_cast<UserThread *>(thread_map_entry->second);
 
-        if (cancelled_thread->thread_cancel_state_ == UserThread::THREAD_CANCEL_STATE::ENABLED &&
-            cancelled_thread->thread_cancel_type_ == UserThread::THREAD_CANCEL_TYPE::DEFERRED)
+        if (cancelled_thread->getThreadCancelState() == UserThread::THREAD_CANCEL_STATE::ENABLED &&
+            cancelled_thread->getThreadCancelType() == UserThread::THREAD_CANCEL_TYPE::DEFERRED)
         {
             //cancle thread ??
-            cancelled_thread->thread_cancellation_state_ = UserThread::ISCANCELED;
+            cancelled_thread->setThreadCancellationState(UserThread::ISCANCELED);
             debug(CANCEL_SUCCESS, "Syscall::pthread_cancel-> %zu thread has been flagged for cancellation\n",
                   cancelled_thread->getTID());
 
@@ -348,9 +350,9 @@ size_t Syscall::pthread_setcancelstate(size_t state, size_t *oldstate)
 
     if (oldstate != nullptr)
     {
-        *oldstate = current_thread->thread_cancel_state_;
+        *oldstate = current_thread->getThreadCancelState();
     }
-    reinterpret_cast<UserThread *> (currentThread)->thread_cancel_state_ = (UserThread::THREAD_CANCEL_STATE) state;
+    reinterpret_cast<UserThread *> (currentThread)->setThreadCancelState((UserThread::THREAD_CANCEL_STATE) state);
 
     return 0;
 }
@@ -378,9 +380,9 @@ size_t Syscall::pthread_setcanceltype(size_t type, size_t *oldtype)
 
     if (oldtype != nullptr)
     {
-        *oldtype = current_thread->thread_cancel_type_;
+        *oldtype = current_thread->getThreadCancelType();
     }
-    reinterpret_cast<UserThread *> (currentThread)->thread_cancel_type_ = (UserThread::THREAD_CANCEL_TYPE) type;
+    reinterpret_cast<UserThread *> (currentThread)->setThreadCancelType((UserThread::THREAD_CANCEL_TYPE) type);
 
     return 0;
 }
