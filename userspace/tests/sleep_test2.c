@@ -7,25 +7,35 @@
 #include "unistd.h"
 #include "pthread.h"
 #include "assert.h"
+#include "time.h"
 
 void function1()
 {
+    clock_t  t1 = clock();
     unsigned int sleep_return_value = sleep(5);
-    printf("Thread 1 done sleeping. \n %u", sleep_return_value);
+    clock_t  t2 = clock();
+    printf("%f\n", ((double) t2 - (double) t1) / CLOCKS_PER_SEC);
+    printf("Thread 1 done sleeping. %u\n", sleep_return_value);
     assert(sleep_return_value == 0 && "sleep() return 0 \n");
 }
 
 void function2()
 {
+    clock_t  t1 = clock();
     unsigned int sleep_return_value = sleep(10);
-    printf("Thread 2 done sleeping. \n %u", sleep_return_value);
+    clock_t  t2 = clock();
+    printf("%f\n", ((double) t2 - (double) t1) / CLOCKS_PER_SEC);
+    printf("Thread 2 done sleeping.  %u\n", sleep_return_value);
     assert(sleep_return_value == 0 && "sleep() return 0 \n");
 }
 
 void function3()
 {
+    clock_t  t1 = clock();
     unsigned int sleep_return_value = sleep(NULL);
-    printf("Thread 3 done sleeping. \n %u", sleep_return_value);
+    clock_t  t2 = clock();
+    printf("%f\n", ((double) t2 - (double) t1) / CLOCKS_PER_SEC);
+    printf("Thread 3 done sleeping. %u\n", sleep_return_value);
     assert(sleep_return_value == 0 && "sleep() return 0 \n");
 }
 
@@ -38,8 +48,11 @@ int main()
     assert(success == 0 && "Success 0. \n");
     success = pthread_create(&thread3, NULL, (void *(*)(void *)) &function3, NULL);
     assert(success == 0 && "Success 0. \n");
+    clock_t  t1 = clock();
     unsigned int sleep_return_value = sleep(10);
-    printf("Thread 0 done sleeping. \n %u", sleep_return_value);
+    clock_t  t2 = clock();
+    printf("%f\n", ((double) t2 - (double) t1) / CLOCKS_PER_SEC);
+    printf("Thread 0 done sleeping. %u\n", sleep_return_value);
     assert(sleep_return_value == 0 && "sleep() return 0 \n");
 
     return 0;
