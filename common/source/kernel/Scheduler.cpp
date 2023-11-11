@@ -66,14 +66,15 @@ void Scheduler::schedule()
                  threads_.end()); // no new/delete here - important because interrupts are disabled
     //debug(SCHEDULER, "Scheduler::schedule: new currentThread is %p %s, switch_to_userspace: %d\n", currentThread, currentThread->getName(), currentThread->switch_to_userspace_);
 
-    if (reinterpret_cast<UserThread *>(currentThread)->switch_to_userspace_ &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_type_ == UserThread::ASYNCHRONOUS &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED)
+    UserThread *pUserThread = reinterpret_cast<UserThread *>(currentThread);
+    if (pUserThread->switch_to_userspace_ &&
+        pUserThread->getThreadCancelType() == UserThread::ASYNCHRONOUS &&
+        pUserThread->getThreadCancellationState() == UserThread::ISCANCELED)
     {
         // Does not have to be atomic, we are in the schedulers, Interrupts are disabled
-        reinterpret_cast<UserThread *>(currentThread)->switch_to_userspace_ = 0;
-        reinterpret_cast<UserThread *>(currentThread)->kernel_registers_->rip = (size_t) (Syscall::pthread_exit);
-        reinterpret_cast<UserThread *>(currentThread)->kernel_registers_->rdi = -1ULL;
+        pUserThread->switch_to_userspace_ = 0;
+        pUserThread->kernel_registers_->rip = (size_t) (Syscall::pthread_exit);
+        pUserThread->kernel_registers_->rdi = -1ULL;
     }
 
     currentThreadRegisters = currentThread->switch_to_userspace_ ? currentThread->user_registers_
