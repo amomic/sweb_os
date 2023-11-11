@@ -407,14 +407,13 @@ size_t UserProcess::exec(char* path, char* const* argv){
     threads_lock_.acquire();
     if(new_fd >= 0){
         fd_ = new_fd;
+        threads_lock_.release();
         new_loader = new Loader(new_fd);
     } else {
         VfsSyscall::close(new_fd);
         delete[] kernel_path;
-        threads_lock_.release();
         return -1;
     }
-    threads_lock_.release();
 
     if(!new_loader || new_fd < 0){
         debug(USERPROCESS, "[Exec] Couldn't open new fd!");
@@ -438,9 +437,11 @@ size_t UserProcess::exec(char* path, char* const* argv){
         uint64 args_page = PageManager::instance()->allocPPN();
 
         // Map the virtual page to the physical page
+        loader_->arch_memory_.arch_mem_lock.acquire();
         uint64 virtual_page = 0;
         debug(USERPROCESS, "hello!");
         bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
+        loader_->arch_memory_.arch_mem_lock.release();
         assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
 
         // Calculate the ident address
