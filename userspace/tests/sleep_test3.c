@@ -3,13 +3,14 @@
 //
 #include "unistd.h"
 #include "stdio.h"
+
 int main()
 {
     unsigned int sleeping_time = 5;
-    printf("Start");
+    printf("Start\n");
     sleep(sleeping_time);
-    printf("Mid");
+    printf("Mid\n");
     sleep(sleeping_time);
-    printf("End");
+    printf("End\n");
     return 0;
 }

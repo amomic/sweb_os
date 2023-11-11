@@ -7,27 +7,40 @@
 #include "umap.h"
 
 class Thread;
+
 class Mutex;
+
 class SpinLock;
+
 class Lock;
 
 class Scheduler
 {
-  public:
-    ustl::map<Thread*, uint32> sleeping_threads_;
+public:
+    ustl::map<Thread *, uint64> sleeping_threads_ ;
 
     static Scheduler *instance();
 
     void addNewThread(Thread *thread);
+
     void sleep();
+
     void wake(Thread *thread_to_wake);
+
     void yield();
+
     void printThreadList();
+
     void printStackTraces();
+
     void printLockingInformation();
+
     bool isSchedulingEnabled();
+
     bool isCurrentlyCleaningUp();
+
     void incTicks();
+
     size_t getTicks();
 
     /**
@@ -38,13 +51,14 @@ class Scheduler
      */
     void schedule();
 
-  protected:
+protected:
     friend class IdleThread;
+
     friend class CleanupThread;
 
     void cleanupDeadThreads();
 
-  private:
+private:
     Scheduler();
 
     /**
@@ -62,7 +76,7 @@ class Scheduler
 
     static Scheduler *instance_;
 
-    typedef ustl::list<Thread*> ThreadList;
+    typedef ustl::list<Thread *> ThreadList;
     ThreadList threads_;
 
     size_t block_scheduling_;
@@ -71,4 +85,12 @@ class Scheduler
 
     IdleThread idle_thread_;
     CleanupThread cleanup_thread_;
+public:
+    void calculateClockFrequency();
+
+    uint64 last_tsc_;
+    uint64 clock_f;
+
+    uint64 cycles_tick[40];
+
 };

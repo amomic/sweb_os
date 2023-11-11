@@ -139,9 +139,9 @@ public:
 
     void makeAsynchronousCancel();
 
-    uint64 getStartClockTime() const;
+    uint64 getStartClockTcs() const;
 
-    void setStartClockTime(uint64 startClockTime);
+    void setStartClockTcs(uint64 startClockTime);
     size_t stack_start;
     size_t stack_end;
 
@@ -151,6 +151,6 @@ private:
     FileSystemInfo *fs_info_{};
     uint32 terminal_number_;
     size_t join_TID;
-    uint64 start_clock_time_;
+    uint64 start_clock_tcs_;
 
 };
