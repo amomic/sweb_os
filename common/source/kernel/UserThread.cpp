@@ -21,6 +21,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         join_condition_(&userProcess->return_val_lock_, "UserThread::join_condition_"),
         terminal_number_(terminal_number)
 {
+    start_clock_tcs_ = ArchThreads::rdtsc();
     wrapper_ = wrapper;
     loader_ = userProcess->getLoader();
 
@@ -104,6 +105,8 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
 
     switch_to_userspace_ = 1;
 
+    start_clock_tcs_ = ArchThreads::rdtsc();
+
 }
 
 
@@ -139,14 +142,14 @@ void UserThread::makeAsynchronousCancel(){
     thread_cancellation_state_ = UserThread::ISCANCELED;
 }
 
-uint64 UserThread::getStartClockTime() const
+uint64 UserThread::getStartClockTcs() const
 {
-    return start_clock_time_;
+    return start_clock_tcs_;
 }
 
-void UserThread::setStartClockTime(uint64 startClockTime)
+void UserThread::setStartClockTcs(uint64 startClockTime)
 {
-    start_clock_time_ = startClockTime;
+    start_clock_tcs_ = startClockTime;
 }
 
 void UserThread::setProcess(UserProcess *process)

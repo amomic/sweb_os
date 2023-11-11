@@ -53,7 +53,8 @@ void Scheduler::schedule()
             auto sleeping_entry = sleeping_threads_.find(*it);
             if (sleeping_entry != sleeping_threads_.end()) // Check if the thread is sleeping
             {
-                if (sleeping_entry->second > getTicks())
+                uint64 i = ArchThreads::rdtsc();
+                if (sleeping_entry->second > i)
                     continue;
             }
             currentThread = *it;
@@ -195,6 +196,11 @@ size_t Scheduler::getTicks()
 void Scheduler::incTicks()
 {
     ++ticks_;
+
+    if(!clock_f)
+    {
+        calculateClockFrequency();
+    }
 }
 
 void Scheduler::printStackTraces()
@@ -231,4 +237,29 @@ void Scheduler::printLockingInformation()
     }
     debug(LOCK, "Scheduler::printLockingInformation finished\n");
     unlockScheduling();
+}
+
+void Scheduler::calculateClockFrequency()
+{
+    if(ticks_ < 30)
+    {
+        cycles_tick[ticks_] = ArchThreads::rdtsc() - last_tsc_;
+        last_tsc_ = ArchThreads::rdtsc();
+        return;
+    }
+
+    if(ticks_ == 30)
+    {
+        uint64_t cycles_tick_average_ = 0;
+
+        for(size_t i = 10; i < 30; ++i)
+        {
+            cycles_tick_average_ += cycles_tick[i];
+        }
+
+        cycles_tick_average_ = cycles_tick_average_ / 20;
+        clock_f = cycles_tick_average_ / 54925;
+    }
+
+    last_tsc_ = ArchThreads::rdtsc();
 }
