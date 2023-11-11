@@ -366,8 +366,7 @@ void UserProcess::unmapPage() {
 
 size_t UserProcess::exec(char* path, char* const* argv){
 
-    size_t args_num = 0;
-    args_num = checkExecArgs(argv);
+    size_t args_num = checkExecArgs(argv);
 
     if (args_num == (size_t)-1)
         return -1;
@@ -403,26 +402,29 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     //Set old and new fd
     int32 new_fd = VfsSyscall::open(kernel_path, O_RDONLY);
-    int32 old_fd = fd_;
+    Loader *new_loader = nullptr;
 
-    if(new_fd == -1)
-    {
+    if(new_fd >= 0){
+        fd_ = new_fd;
+        new_loader = new Loader(new_fd);
+    } else {
+        return -1;
+    }
+
+    if(!new_loader || new_fd < 0){
         debug(USERPROCESS, "[Exec] Couldn't open new fd!");
         VfsSyscall::close(new_fd);
         delete[] kernel_path;
         return -1U;
     }
 
-    //Set old and new loader
-    Loader* old_loader = loader_;
-    Loader* new_loader = new Loader(new_fd);
-
     if(!new_loader->loadExecutableAndInitProcess())
     {
         debug(USERPROCESS, "[Exec] Creation of new loader failed!");
         VfsSyscall::close(new_fd);
         delete[] kernel_path;
-        delete new_loader;
+        if(new_loader)
+            delete new_loader;
         return -1U;
     }
 
@@ -467,6 +469,11 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     deleteAllThreadsExceptCurrent(user_thread);
 
+    fd_ = new_fd;
+
+    threads_lock_.acquire();
+    Scheduler::instance()->yield();
+    threads_lock_.release();
 
     threads_lock_.acquire();
     while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
@@ -475,21 +482,13 @@ size_t UserProcess::exec(char* path, char* const* argv){
     }
     threads_lock_.release();
 
-    //TODO delete this if
-    if(old_fd == NULL || old_loader == NULL || user_thread == NULL)
-    {
-        debug(USERPROCESS, "This is just to avoid 'unused variable' error");
-    }
-
-    loader_ = new_loader;
     currentThread->loader_ = new_loader;
 
-    ArchThreads::setAddressSpace(currentThread, loader_->arch_memory_);
+    ArchThreads::setAddressSpace(currentThread, new_loader->arch_memory_);
     Scheduler::instance()->yield();
 
-    fd_ = new_fd;
-    VfsSyscall::close(old_fd);
-    delete old_loader;
+    Loader* old_loader = loader_;
+    loader_ = new_loader;
 
     //Clear retval map
     threads_lock_.acquire();
@@ -526,9 +525,9 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     //delete old kernel path and kill old thread
     delete[] kernel_path;
-    threads_lock_.acquire();
-    user_thread->makeAsynchronousCancel();
-    threads_lock_.release();
+    delete old_loader;
+    user_thread->kill();
+    VfsSyscall::close(new_fd);
     return 0;
 }
 
@@ -599,7 +598,7 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     if (caller->pid_ == (size_t)pid)
     {
         ProcessRegistry::instance()->process_lock_.release();
-       debug(USERPROCESS, "im in if\n");
+        debug(USERPROCESS, "im in if\n");
         return -1;
     }
 
@@ -625,15 +624,15 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
     target = pid;
 
-        // Wait for the process to terminate using the condition variable
+    // Wait for the process to terminate using the condition variable
 
-            debug(USERPROCESS, "Heloooo");
-            ProcessRegistry::instance()->process_lock_.release();
+    debug(USERPROCESS, "Heloooo");
+    ProcessRegistry::instance()->process_lock_.release();
 
-            process_wait_cond_.wait();
-            debug(USERPROCESS, "hi");
+    process_wait_cond_.wait();
+    debug(USERPROCESS, "hi");
 
-            ProcessRegistry::instance()->process_lock_.acquire();
+    ProcessRegistry::instance()->process_lock_.acquire();
 
 
 
@@ -656,30 +655,35 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 bool UserProcess::CheckStack(size_t pos) {
     auto thread = ((UserThread *) currentThread);
-    for (auto &it: threads_map_) {
+    threads_lock_.acquire();
+    for (auto it: threads_map_) {
         debug(USERPROCESS, "position %18zx", pos);
         debug(USERPROCESS, "start %18zx", thread->stack_start);
         debug(USERPROCESS, "end %18zx", thread->stack_end);
-        if (pos > it.second->stack_end && pos <= it.second->stack_start && pos >= it.second->stack_start - (PAGE_SIZE*(STACK_SIZE-1))) {
+        if (pos>= (it.second->stack_start - (STACK_SIZE*PAGE_SIZE)) && (pos <= it.second->stack_end)) {
             debug(USERPROCESS, "if pos %18zx", pos);
             debug(USERPROCESS, "if start %18zx", it.second->stack_start);
             debug(USERPROCESS, "if end %18zx", it.second->stack_end);
 
+            if(!thread->loader_->arch_memory_.checkAddressValid(pos))
+            {
                 size_t ppn = PageManager::instance()->allocPPN();
-                size_t new_vpn =  pos & ~(PAGE_SIZE - 1);
-
-                bool mapped = it.second->loader_->arch_memory_.mapPage(new_vpn / PAGE_SIZE, ppn, true);
-
+                thread->loader_->arch_memory_.arch_mem_lock.acquire();
+                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
+                thread->loader_->arch_memory_.arch_mem_lock.release();
                 if (!mapped) {
+                    threads_lock_.release();
                     PageManager::instance()->freePPN(ppn);
+                    threads_lock_.acquire();
                 } else {
                     thread->virtual_pages_.push_back(pos / PAGE_SIZE);
                 }
-
+                threads_lock_.release();
                 return true;
             }
-
+        }
     }
 
+    threads_lock_.release();
     return false;
 }
