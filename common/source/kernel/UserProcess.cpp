@@ -408,6 +408,8 @@ size_t UserProcess::exec(char* path, char* const* argv){
         fd_ = new_fd;
         new_loader = new Loader(new_fd);
     } else {
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
         return -1;
     }
 
@@ -434,6 +436,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
         // Map the virtual page to the physical page
         uint64 virtual_page = 0;
+        debug(USERPROCESS, "hello!");
         bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
         assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
 
@@ -469,9 +472,8 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     deleteAllThreadsExceptCurrent(user_thread);
 
-    fd_ = new_fd;
-
     threads_lock_.acquire();
+    fd_ = new_fd;
     Scheduler::instance()->yield();
     threads_lock_.release();
 
