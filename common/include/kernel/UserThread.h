@@ -44,8 +44,6 @@ public:
 
     void setProcess(UserProcess *process);
 
-    static const size_t getStackPages();
-
     size_t getTid() const;
 
     void setTid(size_t tid);
