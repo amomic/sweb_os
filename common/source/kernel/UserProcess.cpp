@@ -40,7 +40,9 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
     threads_lock_.acquire();
     Scheduler::instance()->addNewThread(user_thread);
     threads_map_.push_back(ustl::make_pair(0,user_thread));
-    pid_ = process_count_;
+    ProcessRegistry::instance()->process_lock_.acquire();
+    pid_ = ProcessRegistry::instance()->process_count_;
+    ProcessRegistry::instance()->process_lock_.release();
     ProcessRegistry::instance()->process_map_.push_back(ustl::make_pair(pid_, this));
     threads_alive_++;
     threads_lock_.release();
@@ -687,9 +689,9 @@ bool UserProcess::CheckStack(size_t pos) {
                 bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
                 thread->loader_->arch_memory_.arch_mem_lock.release();
                 if (!mapped) {
-                    //threads_lock_.release();
+                    threads_lock_.release();
                     PageManager::instance()->freePPN(ppn);
-                    //threads_lock_.acquire();
+                    threads_lock_.acquire();
                 } else {
                     thread->virtual_pages_.push_back(pos / PAGE_SIZE);
                 }

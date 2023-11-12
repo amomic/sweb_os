@@ -30,6 +30,7 @@ int main(int argc, char *argv[])
         assert(return_value == 0);
         printf("    pthread_create 1 for %d successful!\n", cnt);
     }
+    sleep(3);
 
     /*for(int cnt = 0; cnt < 1000; cnt++)
     {
