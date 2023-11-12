@@ -437,7 +437,6 @@ size_t UserProcess::exec(char* path, char* const* argv){
     if(args_num != 0){
         // Allocate a physical page for arguments
         uint64 args_page = PageManager::instance()->allocPPN();
-
         // Map the virtual page to the physical page
         loader_->arch_memory_.arch_mem_lock.acquire();
         uint64 virtual_page = 0;
