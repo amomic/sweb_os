@@ -666,7 +666,16 @@ bool UserProcess::CheckStack(size_t pos) {
         debug(USERPROCESS, "position %18zx", pos);
         debug(USERPROCESS, "start %18zx", thread->stack_start);
         debug(USERPROCESS, "end %18zx", thread->stack_end);
-        if (pos>= (it.second->stack_start - (STACK_SIZE*PAGE_SIZE)) && (pos <= it.second->stack_end)) {
+       // kprintf("if pos %18zx\n", pos);
+        //kprintf("if start %18zx\n", it.second->stack_start);
+        //kprintf("if end %18zx\n", it.second->stack_end);
+
+        if (pos<= (it.second->stack_start ) && (pos > it.second->stack_end)) {
+
+          //  kprintf("if pos %18zx", pos);
+           // kprintf("if start %18zx", it.second->stack_start);
+            //kprintf("if end %18zx", it.second->stack_end);
+
             debug(USERPROCESS, "if pos %18zx", pos);
             debug(USERPROCESS, "if start %18zx", it.second->stack_start);
             debug(USERPROCESS, "if end %18zx", it.second->stack_end);
@@ -678,9 +687,9 @@ bool UserProcess::CheckStack(size_t pos) {
                 bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
                 thread->loader_->arch_memory_.arch_mem_lock.release();
                 if (!mapped) {
-                    threads_lock_.release();
+                    //threads_lock_.release();
                     PageManager::instance()->freePPN(ppn);
-                    threads_lock_.acquire();
+                    //threads_lock_.acquire();
                 } else {
                     thread->virtual_pages_.push_back(pos / PAGE_SIZE);
                 }

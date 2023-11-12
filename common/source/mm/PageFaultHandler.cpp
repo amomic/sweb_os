@@ -77,7 +77,14 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
                 return;
             } else
             {
-                Syscall::exit(1);
+                // the page-fault seems to be faulty, print out the thread stack traces
+                ArchThreads::printThreadRegisters(currentThread, true);
+                currentThread->printBacktrace(true);
+                if (currentThread->loader_)
+                {
+                    Syscall::exit(9999);
+                } else
+                    currentThread->kill();
             }
         } else
             currentThread->loader_->loadPage(address);

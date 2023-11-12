@@ -153,6 +153,9 @@ void ProcessRegistry::updateExitCode(size_t code)
     UserThread *current_thread = (UserThread*)currentThread;
     UserProcess *current_process = current_thread->getProcess();
     process_retval_map_.push_back(ustl::make_pair(current_process->pid_, code));
-    current_thread->makeAsynchronousCancel();
+    current_process->threads_lock_.acquire();
+    for( auto it : current_process->threads_map_)
+        it.second->makeAsynchronousCancel();
+    current_process->threads_lock_.release();
     process_lock_.release();
 }
