@@ -41,7 +41,6 @@ public:
     Semaphore process_wait_cond_;
 
     size_t pid_;
-    size_t process_count_{0};
 
     size_t virtual_pages_;
     ustl::atomic<size_t >threads_alive_;
