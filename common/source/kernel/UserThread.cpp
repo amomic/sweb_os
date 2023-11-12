@@ -37,8 +37,13 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     loader_->arch_memory_.arch_mem_lock.acquire();
     stack_start =  (USER_BREAK - PAGE_SIZE * tid * STACK_SIZE);
+    // UB FF
+    // UB - 13
+    // UB -26
     stack_end = stack_start - PAGE_SIZE*(STACK_SIZE-1);
-    size_t virtual_page = (USER_BREAK / PAGE_SIZE - 1 - tid * STACK_SIZE);
+    // UB -12
+    // UB - 25
+    size_t virtual_page = (stack_start/ PAGE_SIZE)-1;
     virtual_pages_.push_back(virtual_page);
     vpn_mapped = loader_->arch_memory_.mapPage(virtual_page, stack_ppn , 1);
     loader_->arch_memory_.arch_mem_lock.release();
