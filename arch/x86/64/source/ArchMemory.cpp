@@ -40,7 +40,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
   memcpy(child_pml4, parent_pml4, PAGE_SIZE);
 
-  debug(A_MEMORY, "[Fork] Memory copy for PML4 done!");
+  debug(A_MEMORY, "[Fork] Memory copy for PML4 done!\n");
 
   //divide by 2 to free only the lower half
   for(uint64 pml4i = 0; pml4i < PAGE_MAP_LEVEL_4_ENTRIES / 2; pml4i++)
@@ -58,7 +58,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           pdpt_ = PageManager::instance()->allocPPN();
           arch_mem_lock.acquire();
           child_pml4[pml4i].page_ppn = pdpt_;
-          debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!");
+          debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!\n");
 
 //----------------------------------------PDPT--------------------------------------------------------------------------
 
@@ -69,7 +69,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           child_pml4[pml4i].present = 1;
 
 
-          debug(A_MEMORY, "[Fork] Memory copy for PDPT done!");
+          debug(A_MEMORY, "[Fork] Memory copy for PDPT done!\n");
 
           for(uint64 pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++)
           {
@@ -88,7 +88,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   arch_mem_lock.acquire();
                   child_pdpt[pdpti].pd.page_ppn = pd_;
 
-                  debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!");
+                  debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!\n");
 
 //------------------------------------------PD--------------------------------------------------------------------------
 
@@ -98,7 +98,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   memcpy(child_pd, parent_pd, PAGE_SIZE);
                   child_pdpt[pdpti].pd.present = 1;
 
-                  debug(A_MEMORY, "[Fork] Memory copy for PD done!");
+                  debug(A_MEMORY, "[Fork] Memory copy for PD done!\n");
 
                   for(uint64 pdi = 0; pdi < PAGE_DIR_ENTRIES; pdi++)
                   {
@@ -116,7 +116,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           pt_ = PageManager::instance()->allocPPN();
                           arch_mem_lock.acquire();
                           child_pd[pdi].pt.page_ppn = pt_;
-                          debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!");
+                          debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
 //------------------------------------------PT--------------------------------------------------------------------------
 
@@ -127,7 +127,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           child_pd[pdi].pt.present = 1;
 
 
-                          debug(A_MEMORY, "[Fork] Memory copy for PT done!");
+                          debug(A_MEMORY, "[Fork] Memory copy for PT done!\n");
 
                           for(uint64 pti = 0; pti < PAGE_TABLE_ENTRIES; pti++)
                           {
@@ -149,7 +149,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   child_pt[pti].present = 1;
                                   parent_pt[pti].present = 1;
 
-                                  debug(A_MEMORY, "[Fork] PT assigned to child.");
+                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
                           }
                       }
@@ -160,7 +160,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
   }
     arch_mem_lock.release();
 
-    debug(A_MEMORY, "[Fork] Arch Memory copy constructor finished!");
+    debug(A_MEMORY, "[Fork] Arch Memory copy constructor finished!\n\n");
 }
 
 
@@ -499,46 +499,114 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 
 void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unused]]ustl::map<size_t, bool> *alloc_pages)
 {
-    debug(A_MEMORY, "[COW] Copying pages for COW!");
-    
+    debug(A_MEMORY, "[COW] Copying pages for COW!\n");
+
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
 
     //TODO add an iterator for the allocated pages?
+    auto iterator = alloc_pages->begin();
 
 //----------------------------------------PML4--------------------------------------------------------------------------
     if(mapping.pml4[mapping.pml4i].cow)
     {
-        //TODO need to check if the reference is set
-        mapping.pml4[mapping.pml4i].cow = 0;
-        mapping.pml4[mapping.pml4i].writeable = 1;
+        debug(A_MEMORY, "[COW] PDPT marked as cow and will be copied!\n");
 
-        //TODO copy the pdpt? somehow
+        //TODO need to check the reference count of this level
+        //TODO if its the last cow reference set the two lines below
+        //debug(A_MEMORY, "[COW] Last reference of PDPT -> will be writable from now on!\n");
+        //mapping.pml4[mapping.pml4i].cow = 0;
+        //mapping.pml4[mapping.pml4i].writeable = 1;
+
+        //TODO else copy the pdpt? somehow
+        debug(A_MEMORY, "[COW] PDPT is not the last reference, writable stays 0, page is copied!\n");
+        auto page_pdpt = (++iterator)->first;
+        alloc_pages->at(iterator->first) = true;
+
+        // copying the page
+        size_t cow_pdpt = getIdentAddressOfPPN(mapping.pml4[mapping.pml4i].page_ppn);
+        memcpy((void*) getIdentAddressOfPPN(page_pdpt), (void*)cow_pdpt, PAGE_SIZE);
+
+        mapping.pml4[mapping.pml4i].page_ppn = page_pdpt;
+        mapping.pml4[mapping.pml4i].writeable = 1;
+        mapping.pml4[mapping.pml4i].cow = 0;
+
+        mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
     }
 //----------------------------------------PDPT--------------------------------------------------------------------------
     if(mapping.pdpt[mapping.pdpti].pd.cow)
     {
-        //TODO need to check if the reference is set
-        mapping.pdpt[mapping.pdpti].pd.cow = 0;
-        mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+        debug(A_MEMORY, "[COW] PD marked as cow and will be copied!\n");
 
-        //TODO copy the pd?
+        //TODO need to check the reference count of this level
+        //TODO if its the last cow reference set the two lines below
+        //debug(A_MEMORY, "[COW] Last reference of PD -> will be writable from now on!\n");
+        //mapping.pdpt[mapping.pdpti].pd.cow = 0;
+        //mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+
+        //TODO else copy the pd?
+        debug(A_MEMORY, "[COW] PD is not the last reference, writable stays 0, page is copied!\n");
+        auto page_pd = (++iterator)->first;
+        alloc_pages->at(iterator->first) = true;
+
+        // copying the page
+        size_t cow_pd = getIdentAddressOfPPN(mapping.pdpt[mapping.pdpti].pd.page_ppn);
+        memcpy((void*) getIdentAddressOfPPN(page_pd), (void*)cow_pd, PAGE_SIZE);
+
+        mapping.pdpt[mapping.pdpti].pd.page_ppn = page_pd;
+        mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+        mapping.pdpt[mapping.pdpti].pd.cow = 0;
+
+        mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
     }
 //------------------------------------------PD--------------------------------------------------------------------------
     if(mapping.pd[mapping.pdi].pt.cow)
     {
-        //TODO need to check if the reference is set
-        mapping.pd[mapping.pdi].pt.cow = 0;
-        mapping.pd[mapping.pdi].pt.writeable = 1;
+        debug(A_MEMORY, "[COW] PT marked as cow and will be copied!\n");
 
-        //TODO copy the pt?
+        //TODO need to check the reference count of this level
+        //TODO if its the last cow reference set the two lines below
+        //debug(A_MEMORY, "[COW] Last reference of PT -> will be writable from now on!\n");
+        //mapping.pd[mapping.pdi].pt.cow = 0;
+        //mapping.pd[mapping.pdi].pt.writeable = 1;
+
+        //TODO else copy the pt?
+        debug(A_MEMORY, "[COW] PT is not the last reference, writable stays 0, page is copied!\n");
+        auto page_pt = (++iterator)->first;
+        alloc_pages->at(iterator->first) = true;
+
+        // copying the page
+        size_t cow_pt = getIdentAddressOfPPN(mapping.pd[mapping.pdi].pt.page_ppn);
+        memcpy((void*) getIdentAddressOfPPN(page_pt), (void*)cow_pt, PAGE_SIZE);
+
+        mapping.pd[mapping.pdi].pt.page_ppn = page_pt;
+        mapping.pd[mapping.pdi].pt.writeable = 1;
+        mapping.pd[mapping.pdi].pt.cow = 0;
+
+        mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
     }
+
+    size_t cow_page = getIdentAddressOfPPN(mapping.pt[mapping.pti].page_ppn);
 //------------------------------------------PT--------------------------------------------------------------------------
     if(mapping.pt[mapping.pti].cow)
     {
-        //TODO need to check if the reference is set
-        mapping.pt[mapping.pti].cow = 0;
-        mapping.pt[mapping.pti].writeable = 1;
+        debug(A_MEMORY, "[COW] Page marked as cow and will be copied!\n");
 
-        //TODO memcpy here?
+        //TODO need to check the reference count of this level
+        //TODO if its the last cow reference set the two lines below
+        //debug(A_MEMORY, "[COW] Last reference of Page -> will be writable from now on!\n");
+        //mapping.pt[mapping.pti].cow = 0;
+        //mapping.pt[mapping.pti].writeable = 1;
+
+        //TODO else delete the current reference to the current page, memcpy here?
+        debug(A_MEMORY, "[COW] Page is not the last reference, writable stays 0, page is copied!\n");
+        auto page_cow = alloc_pages->front().first;
+        alloc_pages->front().second = true;
+
+        // copying the page
+        memcpy((void*) getIdentAddressOfPPN(page_cow), (void*) cow_page, PAGE_SIZE);
+
+        mapping.pt[mapping.pti].page_ppn = page_cow;
+        mapping.pt[mapping.pti].writeable = 1;
+        mapping.pt[mapping.pti].cow = 0;
     }
 }
