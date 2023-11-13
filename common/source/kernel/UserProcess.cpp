@@ -406,22 +406,13 @@ size_t UserProcess::exec(char* path, char* const* argv){
     int32 new_fd = VfsSyscall::open(kernel_path, O_RDONLY);
     Loader *new_loader = nullptr;
 
-    threads_lock_.acquire();
     if(new_fd >= 0){
         fd_ = new_fd;
-        threads_lock_.release();
         new_loader = new Loader(new_fd);
     } else {
         VfsSyscall::close(new_fd);
         delete[] kernel_path;
         return -1;
-    }
-
-    if(!new_loader || new_fd < 0){
-        debug(USERPROCESS, "[Exec] Couldn't open new fd!");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        return -1U;
     }
 
     if(!new_loader->loadExecutableAndInitProcess())
@@ -433,6 +424,14 @@ size_t UserProcess::exec(char* path, char* const* argv){
             delete new_loader;
         return -1U;
     }
+
+    if(!new_loader || new_fd < 0){
+        debug(USERPROCESS, "[Exec] Couldn't open new fd!");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        return -1U;
+    }
+
 
     if(args_num != 0){
         // Allocate a physical page for arguments
@@ -477,17 +476,14 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     deleteAllThreadsExceptCurrent(user_thread);
 
-    threads_lock_.acquire();
     fd_ = new_fd;
     Scheduler::instance()->yield();
-    threads_lock_.release();
 
-    threads_lock_.acquire();
     while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
     {
         Scheduler::instance()->yield();
     }
-    threads_lock_.release();
+
 
     currentThread->loader_ = new_loader;
 
