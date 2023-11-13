@@ -410,9 +410,14 @@ size_t UserProcess::exec(char* path, char* const* argv){
         fd_ = new_fd;
         new_loader = new Loader(new_fd);
     } else {
+        return -1;
+    }
+
+    if(!new_loader || new_fd < 0){
+        debug(USERPROCESS, "[Exec] Couldn't open new fd!");
         VfsSyscall::close(new_fd);
         delete[] kernel_path;
-        return -1;
+        return -1U;
     }
 
     if(!new_loader->loadExecutableAndInitProcess())
@@ -425,16 +430,10 @@ size_t UserProcess::exec(char* path, char* const* argv){
         return -1U;
     }
 
-    if(!new_loader || new_fd < 0){
-        debug(USERPROCESS, "[Exec] Couldn't open new fd!");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        return -1U;
-    }
-
     if(args_num != 0){
         // Allocate a physical page for arguments
         uint64 args_page = PageManager::instance()->allocPPN();
+
         // Map the virtual page to the physical page
         loader_->arch_memory_.arch_mem_lock.acquire();
         uint64 virtual_page = 0;
@@ -476,13 +475,17 @@ size_t UserProcess::exec(char* path, char* const* argv){
     deleteAllThreadsExceptCurrent(user_thread);
 
     fd_ = new_fd;
-    Scheduler::instance()->yield();
 
+    threads_lock_.acquire();
+    Scheduler::instance()->yield();
+    threads_lock_.release();
+
+    threads_lock_.acquire();
     while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
     {
         Scheduler::instance()->yield();
     }
-
+    threads_lock_.release();
 
     currentThread->loader_ = new_loader;
 
