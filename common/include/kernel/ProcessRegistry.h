@@ -47,6 +47,7 @@ class ProcessRegistry : public Thread
     ustl::map<size_t, UserProcess*> process_map_;
     ustl::map<size_t, size_t> process_retval_map_;
     void updateExitCode(size_t code);
+    size_t process_count_{0};
 private:
 
     char const **progs_;

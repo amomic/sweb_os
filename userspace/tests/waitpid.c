@@ -10,14 +10,15 @@ int main()
     if(pid == 0)
     {
         printf("hi from child\n");
-        exit(-1);
+        //sleep(5);
+        exit(-10);
     }
     else
     {
-        printf("hi from parent\n");
-
+        printf("helooo from parent\n");
         sleep(5);
         int retval = waitpid(pid, &status,0);
+        printf("%d",status);
         printf("ret is %d\n", retval);
     }
     return 0;

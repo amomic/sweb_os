@@ -53,7 +53,8 @@ void Scheduler::schedule()
             auto sleeping_entry = sleeping_threads_.find(*it);
             if (sleeping_entry != sleeping_threads_.end()) // Check if the thread is sleeping
             {
-                if (sleeping_entry->second > getTicks())
+                uint64 i = ArchThreads::rdtsc();
+                if (sleeping_entry->second > i)
                     continue;
             }
             currentThread = *it;
@@ -66,14 +67,15 @@ void Scheduler::schedule()
                  threads_.end()); // no new/delete here - important because interrupts are disabled
     //debug(SCHEDULER, "Scheduler::schedule: new currentThread is %p %s, switch_to_userspace: %d\n", currentThread, currentThread->getName(), currentThread->switch_to_userspace_);
 
-    if (reinterpret_cast<UserThread *>(currentThread)->switch_to_userspace_ &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancel_type_ == UserThread::ASYNCHRONOUS &&
-        reinterpret_cast<UserThread *>(currentThread)->thread_cancellation_state_ == UserThread::ISCANCELED)
+    UserThread *pUserThread = reinterpret_cast<UserThread *>(currentThread);
+    if (pUserThread->switch_to_userspace_ &&
+        pUserThread->getThreadCancelType() == UserThread::ASYNCHRONOUS &&
+        pUserThread->getThreadCancellationState() == UserThread::ISCANCELED)
     {
         // Does not have to be atomic, we are in the schedulers, Interrupts are disabled
-        reinterpret_cast<UserThread *>(currentThread)->switch_to_userspace_ = 0;
-        reinterpret_cast<UserThread *>(currentThread)->kernel_registers_->rip = (size_t) (Syscall::pthread_exit);
-        reinterpret_cast<UserThread *>(currentThread)->kernel_registers_->rdi = -1ULL;
+        pUserThread->switch_to_userspace_ = 0;
+        pUserThread->kernel_registers_->rip = (size_t) (Syscall::pthread_exit);
+        pUserThread->kernel_registers_->rdi = -1ULL;
     }
 
     currentThreadRegisters = currentThread->switch_to_userspace_ ? currentThread->user_registers_
@@ -194,6 +196,11 @@ size_t Scheduler::getTicks()
 void Scheduler::incTicks()
 {
     ++ticks_;
+
+    if(!clock_f)
+    {
+        calculateClockFrequency();
+    }
 }
 
 void Scheduler::printStackTraces()
@@ -230,4 +237,29 @@ void Scheduler::printLockingInformation()
     }
     debug(LOCK, "Scheduler::printLockingInformation finished\n");
     unlockScheduling();
+}
+
+void Scheduler::calculateClockFrequency()
+{
+    if(ticks_ < 30)
+    {
+        cycles_tick[ticks_] = ArchThreads::rdtsc() - last_tsc_;
+        last_tsc_ = ArchThreads::rdtsc();
+        return;
+    }
+
+    if(ticks_ == 30)
+    {
+        uint64_t cycles_tick_average_ = 0;
+
+        for(size_t i = 10; i < 30; ++i)
+        {
+            cycles_tick_average_ += cycles_tick[i];
+        }
+
+        cycles_tick_average_ = cycles_tick_average_ / 20;
+        clock_f = cycles_tick_average_ / 54925;
+    }
+
+    last_tsc_ = ArchThreads::rdtsc();
 }

@@ -113,7 +113,7 @@ void ProcessRegistry::createProcess(const char* path) {
     UserProcess *process = new UserProcess(path, new FileSystemInfo(*working_dir_));
     if (process) {
         debug(PROCESS_REG, "create process %s\n", path);
-        process->process_count_++;
+        process_count_++;
     }
 
 }
@@ -129,12 +129,12 @@ size_t ProcessRegistry::fork()
     debug(PROCESS_REG, "TID= %ld, PID= %ld\n", current_thread->tid_, current_process->pid_);
 
     process_lock_.release();
-    current_process->process_count_++;
-    size_t pid = current_process->process_count_;
+    process_count_++;
+    size_t pid = process_count_;
     UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
     process_lock_.acquire();
 
-    process_map_.push_back(ustl::make_pair(progs_running_, current_process));
+    process_map_.push_back(ustl::make_pair(pid, current_process));
 
     if(new_process == nullptr)
     {
@@ -153,6 +153,9 @@ void ProcessRegistry::updateExitCode(size_t code)
     UserThread *current_thread = (UserThread*)currentThread;
     UserProcess *current_process = current_thread->getProcess();
     process_retval_map_.push_back(ustl::make_pair(current_process->pid_, code));
-    current_thread->makeAsynchronousCancel();
+    current_process->threads_lock_.acquire();
+    for( auto it : current_process->threads_map_)
+        it.second->makeAsynchronousCancel();
+    current_process->threads_lock_.release();
     process_lock_.release();
 }
