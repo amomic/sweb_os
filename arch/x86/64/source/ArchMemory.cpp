@@ -264,7 +264,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
   {
     insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, physical_page, 0, 0, user_access, 1);
 
-    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)m.page_ppn, 0));
+    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)m.pt_ppn, 1));
     return true;
   }
 
