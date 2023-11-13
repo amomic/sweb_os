@@ -74,6 +74,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         {
             if (((UserThread *) currentThread)->process_->CheckStack(address))
             {
+                debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
                 return;
             } else
             {
