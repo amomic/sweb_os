@@ -432,7 +432,6 @@ size_t UserProcess::exec(char* path, char* const* argv){
         return -1U;
     }
 
-
     if(args_num != 0){
         // Allocate a physical page for arguments
         uint64 args_page = PageManager::instance()->allocPPN();
