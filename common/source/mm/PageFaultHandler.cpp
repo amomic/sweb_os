@@ -37,6 +37,8 @@ inline bool PageFaultHandler::checkPageFaultIsValid(size_t address, bool user,
   else if(present)
   {
     debug(PAGEFAULT, "You got a pagefault even though the address is mapped.\n");
+    //because of cow, this might be valid now
+    return true;
   }
   else
   {
@@ -80,6 +82,20 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
     if (checkPageFaultIsValid(address, user, present, switch_to_us))
   {
+      //debug(PAGEFAULT, "[COW] Right before the if!\n");
+      //debug(PAGEFAULT, "[COW] address %zu\n", address);
+//-----------------------------------------COW--------------------------------------------------------------------------
+        if(currentThread->loader_->arch_memory_.isCowSet(address))
+        {
+            debug(PAGEFAULT, "[COW] Pagefault happened, cow detected!\n");
+
+            currentThread->loader_->arch_memory_.cowPageCopy(address, &pages);
+
+            debug(PAGEFAULT, "[COW] Page copied!\n");
+        }
+    //----------------------------------------------------------------------------------------------------------------------
+        //debug(PAGEFAULT, "[COW] Right after the if!\n");
+
       debug(USERPROCESS , "%18zx", address);
       if(address>STACK_POS)
       {
@@ -94,18 +110,6 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
       }
       else
           currentThread->loader_->loadPage(address);
-
-//-----------------------------------------COW--------------------------------------------------------------------------
-      if(currentThread->loader_->arch_memory_.isCowSet(address))
-      {
-          debug(PAGEFAULT, "[COW] Pagefault happened, cow detected!");
-
-          currentThread->loader_->arch_memory_.cowPageCopy(address, &pages);
-
-          debug(PAGEFAULT, "[COW] Page copied!");
-      }
-//----------------------------------------------------------------------------------------------------------------------
-
   }
   else
   {
