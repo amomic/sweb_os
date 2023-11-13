@@ -144,10 +144,10 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   parent_pt[pti].writeable = 0;
                                   child_pt[pti].writeable = 0;
 
-                                  //TODO add a cow reference!
+                                  //TODO add a cow reference, for the first time increase it by 2!
 
-                                  end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
-                                  child_pt[pti].page_ppn = end_level_;
+                                  //end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
+                                  //child_pt[pti].page_ppn = end_level_;
 
                                   //void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
                                   //void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
@@ -155,6 +155,10 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                                   child_pt[pti].present = 1;
                                   parent_pt[pti].present = 1;
+
+                                  PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second++;
+
+                                  //debug(A_MEMORY, "Reference count is: %zu\n", ref_count);
 
                                   debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
@@ -259,6 +263,8 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
   if (m.page_ppn == 0)
   {
     insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, physical_page, 0, 0, user_access, 1);
+
+    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)m.page_ppn, 0));
     return true;
   }
 
@@ -268,6 +274,8 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
 ArchMemory::~ArchMemory()
 {
   assert(currentThread->kernel_registers_->cr3 != page_map_level_4_ * PAGE_SIZE && "thread deletes its own arch memory");
+
+  arch_mem_lock.acquire();
 
   PageMapLevel4Entry* pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
   for (uint64 pml4i = 0; pml4i < PAGE_MAP_LEVEL_4_ENTRIES / 2; pml4i++) // free only lower half
@@ -291,8 +299,22 @@ ArchMemory::~ArchMemory()
               {
                 if (pt[pti].present)
                 {
-                  pt[pti].present = 0;
-                  PageManager::instance()->freePPN(pt[pti].page_ppn);
+                  PageManager::instance()->cow_ref_map_lock.acquire();
+                  PageManager::instance()->cow_ref_map.find(pt[pti].page_ppn)->second--;
+
+                  if(PageManager::instance()->cow_ref_map.find(pt[pti].page_ppn)->second == 0)
+                  {
+                      PageManager::instance()->iterator_cow_ref_map = PageManager::instance()->cow_ref_map.find(pt[pti].page_ppn);
+                      PageManager::instance()->cow_ref_map.erase(PageManager::instance()->iterator_cow_ref_map);
+
+                      debug(A_MEMORY, "Ref count is 0, freeing the page!\n");
+                      pt[pti].present = 0;
+                      PageManager::instance()->freePPN(pt[pti].page_ppn);
+                  }
+
+                  PageManager::instance()->cow_ref_map_lock.release();
+
+                  debug(A_MEMORY, "Ref count is not 0, reference deleted!\n");
                 }
               }
               pd[pdi].pt.present = 0;
@@ -308,6 +330,8 @@ ArchMemory::~ArchMemory()
     }
   }
   PageManager::instance()->freePPN(page_map_level_4_);
+
+  arch_mem_lock.release();
 }
 
 pointer ArchMemory::checkAddressValid(uint64 vaddress_to_check)

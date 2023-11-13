@@ -1,8 +1,10 @@
 #pragma once
 
-#include "types.h"
 #include "paging-definitions.h"
 #include "SpinLock.h"
+#include "types.h"
+#include "umap.h"
+#include "Mutex.h"
 
 #define DYNAMIC_KMM (0) // Please note that this means that the KMM depends on the page manager
 // and you will have a harder time implementing swapping. Pros only!
@@ -51,6 +53,12 @@ class PageManager
     void printBitmap();
 
     uint32 getNumPagesForUser() const;
+
+    Mutex cow_ref_map_lock;
+
+    ustl::map<uint64 , size_t> cow_ref_map;
+    ustl::map<uint64 , size_t>::iterator iterator_cow_ref_map;
+    //ustl::atomic<size_t> ref_count = 0;
 
   private:
     bool reservePages(uint32 ppn, uint32 num = 1);

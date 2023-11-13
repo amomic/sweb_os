@@ -21,7 +21,8 @@ PageManager* PageManager::instance()
   return instance_;
 }
 
-PageManager::PageManager() : lock_("PageManager::lock_")
+PageManager::PageManager() : cow_ref_map_lock("cow_ref_map_lock"),
+                             lock_("PageManager::lock_")
 {
   assert(!instance_);
   instance_ = this;
