@@ -156,8 +156,9 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   child_pt[pti].present = 1;
                                   parent_pt[pti].present = 1;
 
+                                  PageManager::instance()->cow_ref_map_lock.acquire();
                                   PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second++;
-
+                                  PageManager::instance()->cow_ref_map_lock.release();
                                   //debug(A_MEMORY, "Reference count is: %zu\n", ref_count);
 
                                   debug(A_MEMORY, "[Fork] PT assigned to child.\n");
@@ -264,7 +265,10 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
   {
     insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, physical_page, 0, 0, user_access, 1);
 
-    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)m.pt_ppn, 1));
+    PageManager::instance()->cow_ref_map_lock.acquire();
+    debug(A_MEMORY, "\n\n\n %zu \n\n\n", m.pt_ppn);
+    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)m.pt_ppn, 1)); //TODO check which ppn needs to be here
+    PageManager::instance()->cow_ref_map_lock.release();
     return true;
   }
 
