@@ -26,6 +26,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
     debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!\n");
 
+    //lock with parent lock
     arch_mem_lock.acquire();
 
     page_map_level_4_ = PageManager::instance()->allocPPN();
@@ -47,16 +48,17 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
   {
       if(parent_pml4[pml4i].present)
       {
+          //again, will be needed for A2
           //set cow bit
-          parent_pml4[pml4i].cow = 1;
+          //parent_pml4[pml4i].cow = 1;
           //set writable bit
-          parent_pml4[pml4i].writeable = 0;
+          //parent_pml4[pml4i].writeable = 0;
 
           //TODO add a cow reference!
 
-          arch_mem_lock.release();
+          //arch_mem_lock.release();
           pdpt_ = PageManager::instance()->allocPPN();
-          arch_mem_lock.acquire();
+          //arch_mem_lock.acquire();
           child_pml4[pml4i].page_ppn = pdpt_;
           debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!\n");
 
@@ -68,24 +70,24 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           memcpy(child_pdpt, parent_pdpt, PAGE_SIZE);
           child_pml4[pml4i].present = 1;
 
-
           debug(A_MEMORY, "[Fork] Memory copy for PDPT done!\n");
 
           for(uint64 pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++)
           {
               if(parent_pdpt[pdpti].pd.present)
               {
+                  //again, will be needed for A2
                   //set cow bit
-                  parent_pdpt[pdpti].pd.cow = 1;
+                  //parent_pdpt[pdpti].pd.cow = 1;
                   //set writable bit
-                  parent_pdpt[pdpti].pd.writeable = 0;
+                  //parent_pdpt[pdpti].pd.writeable = 0;
 
                   //TODO add a cow reference!
                   //TODO delete memcpy's!
 
-                  arch_mem_lock.release();
+                  //arch_mem_lock.release();
                   pd_ = PageManager::instance()->allocPPN();
-                  arch_mem_lock.acquire();
+                  //arch_mem_lock.acquire();
                   child_pdpt[pdpti].pd.page_ppn = pd_;
 
                   debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!\n");
@@ -104,17 +106,18 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   {
                       if(parent_pd[pdi].pt.present)
                       {
+                          //again, will be neded for A2
                           //set cow bit
-                          parent_pd[pdi].pt.cow = 1;
+                          //parent_pd[pdi].pt.cow = 1;
                           //set writable bit
-                          parent_pd[pdi].pt.writeable = 0;
+                          //parent_pd[pdi].pt.writeable = 0;
 
                           //TODO add a cow reference!
                           //TODO delete memcpy's!
 
-                          arch_mem_lock.release();
+                          //arch_mem_lock.release();
                           pt_ = PageManager::instance()->allocPPN();
-                          arch_mem_lock.acquire();
+                          //arch_mem_lock.acquire();
                           child_pd[pdi].pt.page_ppn = pt_;
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
@@ -133,19 +136,23 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           {
                               if(parent_pt[pti].present)
                               {
+                                  //again, will be needed for A2
                                   //set cow bit
                                   parent_pt[pti].cow = 1;
+                                  child_pt[pti].cow = 1;
                                   //set writable bit
                                   parent_pt[pti].writeable = 0;
+                                  child_pt[pti].writeable = 0;
 
                                   //TODO add a cow reference!
-                                  //TODO delete memcpy's!
 
                                   end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
                                   child_pt[pti].page_ppn = end_level_;
-                                  void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
-                                  void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
-                                  memcpy(child_,parent_, PAGE_SIZE);
+
+                                  //void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
+                                  //void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
+                                  //memcpy(child_,parent_, PAGE_SIZE);
+
                                   child_pt[pti].present = 1;
                                   parent_pt[pti].present = 1;
 
@@ -457,11 +464,25 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 {
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_address / PAGE_SIZE);
 
+    if(mapping.page_ppn)
+    {
+        debug(A_MEMORY, "[COW] Page ppn present in mapping!\n");
+    }
+
+    if(!mapping.pt)
+    {
+        debug(A_MEMORY, "PT null - something went wrong!\n");
+        return false;
+    }
+    debug(A_MEMORY, "[COW] In isCowSet function!\n");
+
+    /*
 //----------------------------------------PML4--------------------------------------------------------------------------
     PageMapLevel4Entry *pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
 
     if(!pml4[mapping.pml4i].present)
     {
+        debug(A_MEMORY, "[COW] pml4 not present, returning false!\n");
         return false;
     }
 //----------------------------------------PDPT--------------------------------------------------------------------------
@@ -469,6 +490,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 
     if(!pdpt[mapping.pml4i].pd.present)
     {
+        debug(A_MEMORY, "[COW] pdpt not present, returning false!\n");
         return false;
     }
 //------------------------------------------PD--------------------------------------------------------------------------
@@ -476,6 +498,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 
     if(!pd[mapping.pdi].pt.present)
     {
+        debug(A_MEMORY, "[COW] pd not present, returning false!\n");
         return false;
     }
 //------------------------------------------PT--------------------------------------------------------------------------
@@ -483,15 +506,21 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 
     if(!pt[mapping.pti].present)
     {
+        debug(A_MEMORY, "[COW] pt not present, returning false!\n");
         return false;
     }
+     */
 //----------------------------------------Final check-------------------------------------------------------------------
     if (mapping.pt[mapping.pti].cow == 1)
     {
+
+        debug(A_MEMORY, "[COW] pt cow flag set, returning true!\n");
         return true;
     }
     else
     {
+        debug(A_MEMORY, "[COW] cow bit is: %d\n", mapping.pt[mapping.pti].cow);
+        debug(A_MEMORY, "[COW] pt cow flag not set, returning false!\n");
         return false;
     }
 }
@@ -504,20 +533,25 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
 
     //TODO add an iterator for the allocated pages?
-    auto iterator = alloc_pages->begin();
+    //auto iterator = alloc_pages->begin();
 
 //----------------------------------------PML4--------------------------------------------------------------------------
     if(mapping.pml4[mapping.pml4i].cow)
     {
+        debug(A_MEMORY, "[COW] PML4 marked as COW, for A1 - this should not happen!\n");
+
+        /* Tutors input - we don't need cow for all levels for A1, only the last level is needed (the actual page)
+         * this code will come in handy for A2 then :)
+         *
         debug(A_MEMORY, "[COW] PDPT marked as cow and will be copied!\n");
 
-        //TODO need to check the reference count of this level
-        //TODO if its the last cow reference set the two lines below
+        // need to check the reference count of this level
+        // if it's the last cow reference set the two lines below
         //debug(A_MEMORY, "[COW] Last reference of PDPT -> will be writable from now on!\n");
         //mapping.pml4[mapping.pml4i].cow = 0;
         //mapping.pml4[mapping.pml4i].writeable = 1;
 
-        //TODO else copy the pdpt? somehow
+        // else copy the pdpt? somehow
         debug(A_MEMORY, "[COW] PDPT is not the last reference, writable stays 0, page is copied!\n");
         auto page_pdpt = (++iterator)->first;
         alloc_pages->at(iterator->first) = true;
@@ -531,10 +565,16 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         mapping.pml4[mapping.pml4i].cow = 0;
 
         mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+        */
     }
 //----------------------------------------PDPT--------------------------------------------------------------------------
     if(mapping.pdpt[mapping.pdpti].pd.cow)
     {
+        debug(A_MEMORY, "[COW] PDPT marked as COW, for A1 - this should not happen!\n");
+
+        /* Tutors input - we don't need cow for all levels for A1, only the last level is needed (the actual page)
+         * this code will come in handy for A2 then :)
+         *
         debug(A_MEMORY, "[COW] PD marked as cow and will be copied!\n");
 
         //TODO need to check the reference count of this level
@@ -557,10 +597,16 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         mapping.pdpt[mapping.pdpti].pd.cow = 0;
 
         mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+         */
     }
 //------------------------------------------PD--------------------------------------------------------------------------
     if(mapping.pd[mapping.pdi].pt.cow)
     {
+        debug(A_MEMORY, "[COW] PD marked as COW, for A1 - this should not happen!\n");
+
+        /* Tutors input - we don't need cow for all levels for A1, only the last level is needed (the actual page)
+         * this code will come in handy for A2 then :)
+         *
         debug(A_MEMORY, "[COW] PT marked as cow and will be copied!\n");
 
         //TODO need to check the reference count of this level
@@ -583,6 +629,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         mapping.pd[mapping.pdi].pt.cow = 0;
 
         mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+        */
     }
 
     size_t cow_page = getIdentAddressOfPPN(mapping.pt[mapping.pti].page_ppn);
