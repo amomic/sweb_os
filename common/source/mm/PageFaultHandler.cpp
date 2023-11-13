@@ -84,20 +84,18 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
     if (checkPageFaultIsValid(address, user, present, switch_to_us))
     {
-        debug(USERPROCESS, "%18zx", address);
+        debug(USERPROCESS, "%18zx\n", address);
 
         //-----------------------------------------COW--------------------------------------------------------------------------
         if(currentThread->loader_->arch_memory_.isCowSet(address))
         {
-            debug(PAGEFAULT, "[COW] Pagefault happened, cow detected!");
+            debug(PAGEFAULT, "[COW] Pagefault happened, cow detected!\n");
 
             currentThread->loader_->arch_memory_.cowPageCopy(address, &pages);
 
-            debug(PAGEFAULT, "[COW] Page copied!");
+            debug(PAGEFAULT, "[COW] Page copied!\n");
         }
 //----------------------------------------------------------------------------------------------------------------------
-
-
         if (address > STACK_POS)
         {
             if (((UserThread *) currentThread)->process_->CheckStack(address))
