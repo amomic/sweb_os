@@ -1,32 +1,36 @@
-#define PAGE_SIZE 4096
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
 
-int routine = 1;
-void threadFunction() {
-    printf("start routine %d\n", routine);
-    while(routine){
+#include "stdio.h"
+#include "pthread.h"
+#include "assert.h"
 
+void* thread_function(void* arg) {
+    int value = 1;
+    int* val = &value;
+    while(1) {
+        val -= 128;
+        *val = 2;
+        printf("Value %d and Pointer %p\n", value, val);
     }
+    return NULL;
 }
 
-int main()
-{
-    int j;
-    pthread_t tid;
-    pthread_create(&tid, NULL, (void* (*)(void*))threadFunction, NULL);
-    sleep(5);
+int main() {
+    pthread_t thread;
+    void* result = 0;
 
-    char array[PAGE_SIZE * 5];
-    for(int i = 0; i < PAGE_SIZE * 4; i++)
-    {
-        array[i] = (char)i;
-        j = array[i];
-    }
+    int value = 0;
+    pthread_create(&thread, NULL, thread_function, &value);
 
-    printf("hello %d \n",j);
 
+
+   while(1)
+   {
+
+   }
+
+    assert(value == 42);
+   // printf("Thread result: %d;\nReturned: %d\n", (int)(intptr_t)result,join_result);
+
+    //printf("   Test 1: Thread joined successful!\n\n");
     return 0;
 }
-
