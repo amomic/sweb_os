@@ -9,6 +9,8 @@ void* thread_start(void *arg)
 {
 
     printf("Hello world!\n");
+    while(1)
+        printf("hi");
     return NULL;
 }
 
@@ -31,6 +33,7 @@ int main(int argc, char *argv[])
         printf("    pthread_create 1 for %d successful!\n", cnt);
     }
     sleep(3);
+     exit(2);
 
     /*for(int cnt = 0; cnt < 1000; cnt++)
     {
