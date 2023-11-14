@@ -100,9 +100,9 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         }
 
 //----------------------------------------------------------------------------------------------------------------------
-        debug(USERPROCESS, "%18zx\n", address);
 
-        if (address > STACK_POS)
+        debug(USERPROCESS, "%18zx", address);
+        if (address < STACK_POS && address > STACK_END)
         {
             if (((UserThread *) currentThread)->process_->CheckStack(address))
             {

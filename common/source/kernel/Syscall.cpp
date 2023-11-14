@@ -18,8 +18,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
 
     UserThread *pUserThread = reinterpret_cast<UserThread *>(currentThread);
     if (pUserThread->getThreadCancellationState() == UserThread::ISCANCELED &&
-        pUserThread->getThreadCancelState() == UserThread::ENABLED &&
-        pUserThread->getThreadCancelType() == UserThread::DEFERRED)
+        pUserThread->getThreadCancelState() == UserThread::ENABLED)
     {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
@@ -105,8 +104,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
     }
     if (pUserThread->getThreadCancellationState() == UserThread::ISCANCELED &&
-        pUserThread->getThreadCancelState() == UserThread::ENABLED &&
-        pUserThread->getThreadCancelType() == UserThread::DEFERRED)
+        pUserThread->getThreadCancelState() == UserThread::ENABLED)
     {
         pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
