@@ -534,11 +534,11 @@ size_t UserProcess::exec(char* path, char* const* argv){
     //delete old kernel path and kill old thread
     delete[] kernel_path;
     delete old_loader;
-    user_thread->kill();
     if(old_fd != -1)
     {
         VfsSyscall::close(old_fd);
     }
+    user_thread->kill();
     return 0;
 }
 
