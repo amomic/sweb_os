@@ -669,7 +669,7 @@ bool UserProcess::CheckStack(size_t pos) {
         //kprintf("if start %18zx\n", it.second->stack_start);
         //kprintf("if end %18zx\n", it.second->stack_end);
 
-        if (pos> (it.second->stack_start ) && (pos <= it.second->stack_end)) {
+        if (pos> (it.second->stack_start ) || (pos <= it.second->stack_end)) {
 
           //  kprintf("if pos %18zx", pos);
            // kprintf("if start %18zx", it.second->stack_start);
