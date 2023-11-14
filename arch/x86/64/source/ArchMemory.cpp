@@ -7,6 +7,7 @@
 #include "Thread.h"
 #include "UserThread.h"
 #include "Thread.h"
+#include "ProcessRegistry.h"
 
 PageMapLevel4Entry kernel_page_map_level_4[PAGE_MAP_LEVEL_4_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTER_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -144,6 +145,8 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   parent_pt[pti].writeable = 0;
                                   child_pt[pti].writeable = 0;
 
+                                  child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
+
                                   //TODO add a cow reference, for the first time increase it by 2!
 
                                   //end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
@@ -153,11 +156,15 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   //void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
                                   //memcpy(child_,parent_, PAGE_SIZE);
 
-                                  child_pt[pti].present = 1;
-                                  parent_pt[pti].present = 1;
+                                  //child_pt[pti].present = 1;
+                                  //parent_pt[pti].present = 1;
 
+                                  debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
+                                  debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
                                   PageManager::instance()->cow_ref_map_lock.acquire();
                                   PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second++;
+                                  debug(A_MEMORY, "[DEBUG] cow ref map address %zu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->first);
+                                  debug(A_MEMORY, "[DEBUG] cow ref map count %lu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second);
                                   PageManager::instance()->cow_ref_map_lock.release();
                                   //debug(A_MEMORY, "Reference count is: %zu\n", ref_count);
 
@@ -267,7 +274,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
 
     PageManager::instance()->cow_ref_map_lock.acquire();
     debug(A_MEMORY, "\n\n\n %zu \n\n\n", m.pt_ppn);
-    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)m.pt_ppn, 1)); //TODO check which ppn needs to be here
+    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)physical_page, 1)); //TODO check which ppn needs to be here
     PageManager::instance()->cow_ref_map_lock.release();
     return true;
   }
@@ -315,10 +322,11 @@ ArchMemory::~ArchMemory()
                       pt[pti].present = 0;
                       PageManager::instance()->freePPN(pt[pti].page_ppn);
                   }
-
+                  else
+                  {
+                      debug(A_MEMORY, "Ref count is not 0, reference deleted!\n");
+                  }
                   PageManager::instance()->cow_ref_map_lock.release();
-
-                  debug(A_MEMORY, "Ref count is not 0, reference deleted!\n");
                 }
               }
               pd[pdi].pt.present = 0;
@@ -490,6 +498,7 @@ uint64 ArchMemory::getPML4()
 
 bool ArchMemory::isCowSet(uint64 virt_address)
 {
+    arch_mem_lock.acquire();
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_address / PAGE_SIZE);
 
     if(mapping.page_ppn)
@@ -500,6 +509,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
     if(!mapping.pt)
     {
         debug(A_MEMORY, "PT null - something went wrong!\n");
+        arch_mem_lock.release();
         return false;
     }
     debug(A_MEMORY, "[COW] In isCowSet function!\n");
@@ -543,12 +553,14 @@ bool ArchMemory::isCowSet(uint64 virt_address)
     {
 
         debug(A_MEMORY, "[COW] pt cow flag set, returning true!\n");
+        arch_mem_lock.release();
         return true;
     }
     else
     {
         debug(A_MEMORY, "[COW] cow bit is: %d\n", mapping.pt[mapping.pti].cow);
         debug(A_MEMORY, "[COW] pt cow flag not set, returning false!\n");
+        arch_mem_lock.release();
         return false;
     }
 }
@@ -558,6 +570,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 {
     debug(A_MEMORY, "[COW] Copying pages for COW!\n");
 
+    arch_mem_lock.acquire();
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
 
     //TODO add an iterator for the allocated pages?
@@ -659,29 +672,40 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
         */
     }
-
+    debug(A_MEMORY, "Child PPN is : %d\n", mapping.pt[mapping.pti].page_ppn );
     size_t cow_page = getIdentAddressOfPPN(mapping.pt[mapping.pti].page_ppn);
 //------------------------------------------PT--------------------------------------------------------------------------
     if(mapping.pt[mapping.pti].cow)
     {
         debug(A_MEMORY, "[COW] Page marked as cow and will be copied!\n");
 
-        //TODO need to check the reference count of this level
-        //TODO if its the last cow reference set the two lines below
-        //debug(A_MEMORY, "[COW] Last reference of Page -> will be writable from now on!\n");
-        //mapping.pt[mapping.pti].cow = 0;
-        //mapping.pt[mapping.pti].writeable = 1;
+        debug(A_MEMORY, "[COW] Cow called in process with PID: %zu\n ",ProcessRegistry::instance()->process_count_);
+        PageManager::instance()->cow_ref_map_lock.acquire();
+        PageManager::instance()->iterator_cow_ref_map = PageManager::instance()->cow_ref_map.find(mapping.pt[mapping.pti].page_ppn);
 
-        //TODO else delete the current reference to the current page, memcpy here?
-        debug(A_MEMORY, "[COW] Page is not the last reference, writable stays 0, page is copied!\n");
-        auto page_cow = alloc_pages->front().first;
-        alloc_pages->front().second = true;
+        if(PageManager::instance()->iterator_cow_ref_map->second == 1)
+        {
+            debug(A_MEMORY, "[COW] Page is the last reference, writable changes to 1, page does not get copied!\n");
 
-        // copying the page
-        memcpy((void*) getIdentAddressOfPPN(page_cow), (void*) cow_page, PAGE_SIZE);
+        }
+        else
+        {
+            auto page_cow = alloc_pages->front().first;
+            alloc_pages->front().second = true;
 
-        mapping.pt[mapping.pti].page_ppn = page_cow;
+            // copying the page
+            memcpy((void*) getIdentAddressOfPPN(page_cow), (void*) cow_page, PAGE_SIZE);
+            debug(A_MEMORY, "[COW] Page is not the last reference, writable stays to 0, page gets copied!\n");
+            PageManager::instance()->iterator_cow_ref_map->second--;
+
+            debug(A_MEMORY, "[DEBUG COPY COW] cow ref map address %zu\n", PageManager::instance()->cow_ref_map.find(mapping.pt[mapping.pti].page_ppn)->first);
+            debug(A_MEMORY, "[DEBUG COPY COW] cow ref map count %lu\n", PageManager::instance()->cow_ref_map.find(mapping.pt[mapping.pti].page_ppn)->second);
+            mapping.pt[mapping.pti].page_ppn = page_cow;
+        }
+
         mapping.pt[mapping.pti].writeable = 1;
         mapping.pt[mapping.pti].cow = 0;
+        PageManager::instance()->cow_ref_map_lock.release();
     }
+    arch_mem_lock.release();
 }
