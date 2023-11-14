@@ -678,7 +678,6 @@ bool UserProcess::CheckStack(size_t pos) {
             debug(USERPROCESS, "if pos %18zx", pos);
             debug(USERPROCESS, "if start %18zx", it.second->stack_start);
             debug(USERPROCESS, "if end %18zx", it.second->stack_end);
-
             if(!thread->loader_->arch_memory_.checkAddressValid(pos))
             {
                 size_t ppn = PageManager::instance()->allocPPN();
