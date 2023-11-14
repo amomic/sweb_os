@@ -10,7 +10,8 @@ void* thread_function(void* arg) {
     int value = 1;
     int* val = &value;
     while(1) {
-        val -= 128;
+        //val += 4096;
+        val -= 4096;
         *val = 2;
         printf("Value %d and Pointer %p\n", value, val);
     }
