@@ -36,7 +36,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     bool vpn_mapped = -1;
 
     loader_->arch_memory_.arch_mem_lock.acquire();
-    stack_start =  (USER_BREAK - PAGE_SIZE * tid * STACK_SIZE);
+    stack_start =  (STACK_POS- PAGE_SIZE * tid * STACK_SIZE);
     // UB FF
     // UB - 13
     // UB -26

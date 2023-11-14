@@ -70,7 +70,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
     if (checkPageFaultIsValid(address, user, present, switch_to_us))
     {
         debug(USERPROCESS, "%18zx", address);
-        if (address > STACK_POS)
+        if (address < STACK_POS && address > STACK_END)
         {
             if (((UserThread *) currentThread)->process_->CheckStack(address))
             {
