@@ -406,7 +406,10 @@ size_t UserProcess::exec(char* path, char* const* argv){
     int32 new_fd = VfsSyscall::open(kernel_path, O_RDONLY);
     Loader *new_loader = nullptr;
 
+    int32 old_fd = -1;
+
     if(new_fd >= 0){
+        old_fd = fd_;
         fd_ = new_fd;
         new_loader = new Loader(new_fd);
     } else {
@@ -532,7 +535,10 @@ size_t UserProcess::exec(char* path, char* const* argv){
     delete[] kernel_path;
     delete old_loader;
     user_thread->kill();
-    VfsSyscall::close(new_fd);
+    if(old_fd != -1)
+    {
+        VfsSyscall::close(old_fd);
+    }
     return 0;
 }
 
