@@ -510,16 +510,16 @@ size_t UserProcess::exec(char* path, char* const* argv){
     deleteExecThreads(user_thread);
 
     // Signal to join
-   /* if(user_thread->waited_by_ != nullptr){
-        auto waiting = user_thread->waited_by_;
+    /* if(user_thread->waited_by_ != nullptr){
+         auto waiting = user_thread->waited_by_;
 
-        //waiting->getProcess()->return_val_lock_.acquire();
-        waiting->join_condition_.signal();
-        //waiting->getProcess()->return_val_lock_.release();
+         waiting->getProcess()->return_val_lock_.acquire();
+         waiting->join_condition_.signal();
+         waiting->getProcess()->return_val_lock_.release();
 
-        waiting->waiting_for_ = nullptr;
-        user_thread->waited_by_ = nullptr;
-    } */
+         waiting->waiting_for_ = nullptr;
+         user_thread->waited_by_ = nullptr;
+     }*/
 
     fd_ = new_fd;
 
@@ -659,14 +659,14 @@ bool UserProcess::CheckStack(size_t pos) {
         debug(USERPROCESS, "position %18zx\n", pos);
         debug(USERPROCESS, "start %18zx\n", thread->stack_start);
         debug(USERPROCESS, "end %18zx\n", thread->stack_end);
-       // kprintf("if pos %18zx\n", pos);
+        // kprintf("if pos %18zx\n", pos);
         //kprintf("if start %18zx\n", it.second->stack_start);
         //kprintf("if end %18zx\n", it.second->stack_end);
 
         if (pos<= (it.second->stack_start ) && (pos > it.second->stack_end)) {
 
-          //  kprintf("if pos %18zx", pos);
-           // kprintf("if start %18zx", it.second->stack_start);
+            //  kprintf("if pos %18zx", pos);
+            // kprintf("if start %18zx", it.second->stack_start);
             //kprintf("if end %18zx", it.second->stack_end);
 
             debug(USERPROCESS, "if pos %18zx\n", pos);
