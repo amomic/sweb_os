@@ -368,42 +368,10 @@ void UserProcess::unmapPage() {
 
 size_t UserProcess::exec(char* path, char* const* argv){
 
-    size_t args_num = 0;
+    // Check the args
+    size_t args_num = checkExecArgs(argv);
 
-    size_t check_arg_size = 0;
-
-    size_t itterator;
-
-    for (itterator = 0; argv[itterator] != nullptr; itterator++) {
-        if (reinterpret_cast<size_t>(argv[itterator]) >= USER_BREAK) {
-            return -1;
-        }
-
-        size_t tmp_size = 0;
-
-        while (argv[itterator][tmp_size] != '\0') {
-            tmp_size++;
-        }
-
-        if(strlen(argv[itterator]) > 200) {
-            return -1ULL;
-        }
-
-        if (reinterpret_cast<size_t>(argv[itterator] + tmp_size + 1) >= USER_BREAK) {
-            return -1ULL;
-        }
-
-        check_arg_size += tmp_size + 1;
-    }
-
-    args_num = itterator;
-    check_arg_size += itterator * sizeof(size_t);
-
-    if (check_arg_size >= PAGE_SIZE) {
-        return -1ULL;
-    }
-
-    if(args_num > 16) {
+    if(args_num == static_cast<size_t>(-1)){
         return -1ULL;
     }
 
@@ -513,6 +481,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
         }
     }
 
+    // Delete all threads except the current one
     auto calling_process = user_thread->getProcess();
 
     ustl::map<size_t, UserThread*>::iterator it;
@@ -526,6 +495,18 @@ size_t UserProcess::exec(char* path, char* const* argv){
         handler->makeAsynchronousCancel();
     }
     calling_process->threads_lock_.release();
+
+    // Signal to join
+    /* if(user_thread->waited_by_ != NULL){
+        auto waiting = user_thread->waited_by_;
+
+        waiting->getProcess()->return_val_lock_.acquire();
+        waiting->join_condition_.signal();
+        waiting->getProcess()->return_val_lock_.release();
+
+        waiting->waiting_for_ = NULL;
+        user_thread->waited_by_ = NULL;
+    } */
 
     fd_ = new_fd;
 
@@ -701,3 +682,51 @@ bool UserProcess::CheckStack(size_t pos) {
     threads_lock_.release();
     return false;
 }
+
+
+size_t UserProcess::checkExecArgs(char *const *args) {
+
+    size_t check_arg_size = 0;
+    size_t number_of_args = 0;
+    size_t itterator;
+
+    if (args == nullptr) {
+        return 0;
+    }
+
+    for (itterator = 0; args[itterator] != nullptr; itterator++) {
+        if (reinterpret_cast<size_t>(args[itterator]) >= USER_BREAK) {
+            return -1;
+        }
+
+        size_t tmp_size = 0;
+
+        while (args[itterator][tmp_size] != '\0') {
+            tmp_size++;
+        }
+
+        if(strlen(args[itterator]) > 200) {
+            return -1;
+        }
+
+        if (reinterpret_cast<size_t>(args[itterator] + tmp_size + 1) >= USER_BREAK) {
+            return -1;
+        }
+
+        check_arg_size += tmp_size + 1;
+    }
+
+    number_of_args = itterator;
+    check_arg_size += itterator * sizeof(size_t);
+
+    if (check_arg_size >= PAGE_SIZE) {
+        return static_cast<size_t>(-1);
+    }
+
+    if(number_of_args > 16) {
+        return -1;
+    }
+
+    return number_of_args;
+}
+
