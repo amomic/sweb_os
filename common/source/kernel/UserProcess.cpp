@@ -368,10 +368,44 @@ void UserProcess::unmapPage() {
 
 size_t UserProcess::exec(char* path, char* const* argv){
 
-    size_t args_num = checkExecArgs(argv);
+    size_t args_num = 0;
 
-    if (args_num == (size_t)-1)
-        return -1;
+    size_t check_arg_size = 0;
+
+    size_t itterator;
+
+    for (itterator = 0; argv[itterator] != nullptr; itterator++) {
+        if (reinterpret_cast<size_t>(argv[itterator]) >= USER_BREAK) {
+            return -1;
+        }
+
+        size_t tmp_size = 0;
+
+        while (argv[itterator][tmp_size] != '\0') {
+            tmp_size++;
+        }
+
+        if(strlen(argv[itterator]) > 200) {
+            return -1ULL;
+        }
+
+        if (reinterpret_cast<size_t>(argv[itterator] + tmp_size + 1) >= USER_BREAK) {
+            return -1ULL;
+        }
+
+        check_arg_size += tmp_size + 1;
+    }
+
+    args_num = itterator;
+    check_arg_size += itterator * sizeof(size_t);
+
+    if (check_arg_size >= PAGE_SIZE) {
+        return -1ULL;
+    }
+
+    if(args_num > 16) {
+        return -1ULL;
+    }
 
     debug(USERPROCESS, "[Exec] In UserProcess!\n");
 
@@ -441,6 +475,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
         loader_->arch_memory_.arch_mem_lock.acquire();
         uint64 virtual_page = 0;
         debug(USERPROCESS, "hello!\n");
+
         bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
         loader_->arch_memory_.arch_mem_lock.release();
         assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
@@ -460,7 +495,9 @@ size_t UserProcess::exec(char* path, char* const* argv){
         for (i = 0;i < args_num; i++) {
             *reinterpret_cast<uint64*>(ident_addr) = start_v;
             ident_addr += sizeof(pointer);
+
             j = 0;
+
             while (args[i][j] != '\0') {
                 uint64 tmp_addr = start_p + j;
                 *reinterpret_cast<char*>(tmp_addr) = args[i][j];
@@ -470,12 +507,25 @@ size_t UserProcess::exec(char* path, char* const* argv){
             *reinterpret_cast<char*>(start_p + j) = 0;
 
             uint64 increment = sizeof(char) * (j + 1);
+
             start_v += increment;
             start_p += increment;
         }
     }
 
-    deleteAllThreadsExceptCurrent(user_thread);
+    auto calling_process = user_thread->getProcess();
+
+    ustl::map<size_t, UserThread*>::iterator it;
+
+    calling_process->threads_lock_.acquire();
+
+    for(it = calling_process->threads_map_.begin(); it !=calling_process->threads_map_.end(); it++){
+        if(it->second == user_thread)
+            continue;
+        auto handler = reinterpret_cast<UserThread*>(it->second);
+        handler->makeAsynchronousCancel();
+    }
+    calling_process->threads_lock_.release();
 
     fd_ = new_fd;
 
@@ -509,8 +559,6 @@ size_t UserProcess::exec(char* path, char* const* argv){
     size_t new_tid = threads_counter_for_id_;
     threads_lock_.release();
 
-    //TODO set RDI, RSI registers
-
     //new thread
     UserThread* new_user_thread = new UserThread(filename_, fs_info_, terminal_number_, this,
                                                  NULL, loader_->getEntryFunction(), new_tid, (void*)args_num, NULL);
@@ -534,69 +582,15 @@ size_t UserProcess::exec(char* path, char* const* argv){
     //delete old kernel path and kill old thread
     delete[] kernel_path;
     delete old_loader;
+
     if(old_fd != -1)
     {
         VfsSyscall::close(old_fd);
     }
+
     user_thread->kill();
+
     return 0;
-}
-
-void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
-{
-    auto calling_thread = reinterpret_cast<UserThread*>(current_thread);
-    auto calling_process = calling_thread->getProcess();
-
-    ustl::map<size_t, UserThread*>::iterator it;
-
-    calling_process->threads_lock_.acquire();
-
-    for(it = calling_process->threads_map_.begin(); it !=calling_process->threads_map_.end(); it++){
-        if(it->second == calling_thread)
-            continue;
-        auto handler = reinterpret_cast<UserThread*>(it->second);
-        handler->makeAsynchronousCancel();
-    }
-    calling_process->threads_lock_.release();
-}
-
-size_t UserProcess::checkExecArgs(char *const *args) {
-    size_t check_arg_size = 0;
-    size_t number_of_args = 0;
-    size_t itterator;
-
-    if (args == nullptr) {
-        return 0;
-    }
-
-    for (itterator = 0; args[itterator] != nullptr; itterator++) {
-        if (reinterpret_cast<size_t>(args[itterator]) >= USER_BREAK)
-            return -1;
-
-        size_t tmp_size = 0;
-        while (args[itterator][tmp_size] != '\0') {
-            tmp_size++;
-        }
-
-        if(strlen(args[itterator]) > 200)
-            return -1;
-
-        if (reinterpret_cast<size_t>(args[itterator] + tmp_size + 1) >= USER_BREAK)
-            return -1;
-
-        check_arg_size += tmp_size + 1;
-    }
-
-    number_of_args = itterator;
-    check_arg_size += itterator * sizeof(size_t);
-
-    if (check_arg_size >= PAGE_SIZE)
-        return static_cast<size_t>(-1);
-
-    if(number_of_args > 16)
-        return -1;
-
-    return number_of_args;
 }
 
 pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
