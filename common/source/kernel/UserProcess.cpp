@@ -185,11 +185,15 @@ void UserProcess::CleanThreads(size_t thread)
 size_t UserProcess::joinThread(size_t thread, pointer return_val) {
     debug(SYSCALL, "joinThread started\n");
     kprintf("*** JOIN STARTED!\n");
-    if((size_t)return_val >= USER_BREAK) // Check if return_val is valid
-        return -1ULL;
 
-    if(currentThread->getTID() == thread) // Self-join check
+    if((size_t)return_val >= USER_BREAK) { // Check if return_val is valid
         return -1ULL;
+    }
+
+    if(currentThread->getTID() == thread) {// Self-join check
+        return -1ULL;
+    }
+
     debug(SYSCALL, "Initial checks in joinThread done\n");
 
     UserThread* current_thread = reinterpret_cast<UserThread*>(currentThread);
@@ -202,6 +206,7 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
     debug(SYSCALL, "After locking hreads_lock_ and before looking into map in joinThraed\n");
 
     if(threads_map_.find(thread) == threads_map_.end() || joining_thread->getJoinTID() != 0){ // Check if thread in map and if joinable
+
         current_process->threads_lock_.release();
         current_process->return_val_lock_.acquire();
         debug(SYSCALL, "Checking if thread is in the map - joinThraed\n");
@@ -211,22 +216,29 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
         if(thread_retval_map_entry == current_process->thread_retval_map.end()){ // retval not found in list
             debug(SYSCALL, "retval not found in the map - joinThraed\n");
             kprintf("retval not found in list - exiting -1\n");
+
             current_process->return_val_lock_.release();
             return -1ULL;
         } else { // retval found in list
             debug(SYSCALL, "retval found in the map - joinThread\n");
             kprintf("retval found in map\n");
+
             if(return_val == NULL){
                 thread_retval_map_entry = current_process->thread_retval_map.find(thread);
-                if(thread_retval_map_entry != current_process->thread_retval_map.end())
+
+                if(thread_retval_map_entry != current_process->thread_retval_map.end()) {
                     current_process->thread_retval_map.erase(thread);
+                }
+
                 current_process->return_val_lock_.release();
                 kprintf("Thread already finished - returning 0\n");
+
                 return 0;
             } else {
                 if(thread_retval_map_entry != current_process->thread_retval_map.end()) {
                     *(size_t *) return_val = (size_t) thread_retval_map_entry->second;
                     current_process->thread_retval_map.erase(thread);
+
                     debug(SYSCALL, "retval is set - joinThraed\n");
                     kprintf("Thread already finished - retval is set! returning 0\n");
                 }
@@ -239,6 +251,7 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
         if (joining_thread->type_of_join_ == UserThread::DETATCH_STATE::JOINABLE){
             debug(SYSCALL, "Thread is joinable - joinThread\n");
             kprintf("Thread is joinable!\n");
+
             if (current_thread->waited_by_ == nullptr && joining_thread->waited_by_ == nullptr){    // Deadlock check
                 if(joining_thread->waiting_for_ != current_thread){
                     current_thread->waiting_for_ = joining_thread;
@@ -253,12 +266,14 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
             } else {    // Waited by some other thread
                 debug(SYSCALL, "Waited by some other thread - joinThread\n");
                 kprintf("ERROR - Waited by some other thread! - returning error -1\n");
+
                 current_process->threads_lock_.release();
                 return -1ULL;
             }
         } else {   // Is detached
             debug(SYSCALL, "Thread is detached - joinThread\n");
             kprintf("ERROR - thread is detached! -1\n");
+
             current_process->threads_lock_.release();
             return -1ULL;
         }
@@ -271,35 +286,44 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
         if (current_process->thread_retval_map.end() != thread_retval_map_entry){
             if (return_val != NULL){
                 thread_retval_map_entry = current_process->thread_retval_map.find(thread);
+
                 if (current_process->thread_retval_map.end() != thread_retval_map_entry){
                     *(size_t*)return_val = (size_t)thread_retval_map_entry->second;
                     current_process->thread_retval_map.erase(thread);
                 }
+
                 joining_thread->waited_by_ = nullptr;
                 current_thread->waiting_for_ = nullptr;
                 current_process->return_val_lock_.release();
             } else {
-                if (current_process->thread_retval_map.end() != thread_retval_map_entry)
+                if (current_process->thread_retval_map.end() != thread_retval_map_entry) {
                     current_process->thread_retval_map.erase(thread);
+                }
+
                 joining_thread->waited_by_ = nullptr;
                 current_thread->waiting_for_ = nullptr;
                 current_process->return_val_lock_.release();
             }               // Thread already finished
+
             debug(SYSCALL, "Thread already finished - joinThread\n");
             kprintf("Thread already finished and retval set - SUCESS! 0\n");
+
             return 0;
         } else {
             debug(SYSCALL, "Thread not finished - waiting - joinThread\n");
             kprintf("Thread not finished - waiting - joinThread\n");
+
             current_thread->join_condition_.wait(); // Thread not finished, waiting for finish
 
             if (return_val != NULL){ // Has finished
                 thread_retval_map_entry = thread_retval_map.find(thread);
+
                 if (current_process->thread_retval_map.end() != thread_retval_map_entry){
                     *(size_t*) return_val = (size_t)thread_retval_map_entry->second;
                     debug(SYSCALL, "retval is set - joinThread\n");
                     current_process->thread_retval_map.erase(thread);
                 }
+
                 current_process->return_val_lock_.release();
             } else {
                 thread_retval_map_entry = thread_retval_map.find(thread);
@@ -327,10 +351,13 @@ size_t UserProcess::detachThread(size_t thread) {
         kprintf("Does not exist!\n");
         threads_lock_.release();
         return -1ULL;
+    } else {
+        threads_lock_.release();
     }
 
     auto detach_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
 
+    // Signal join
     if (detach_thread->waited_by_ != nullptr){
         detach_thread->waited_by_->join_condition_.signal();
 
@@ -343,14 +370,12 @@ size_t UserProcess::detachThread(size_t thread) {
     if (detach_thread->type_of_join_ == UserThread::JOINABLE){
         detach_thread->type_of_join_ = UserThread::DETATCHED;
         detach_thread->state_join_lock_.release();
-        threads_lock_.release();
         kprintfd("Detached state set!\n");
         return 0;
     } else {
         detach_thread->state_join_lock_.release();
         return -1ULL;
     }
-    threads_lock_.release();
     return 0;
 }
 
@@ -482,19 +507,31 @@ size_t UserProcess::exec(char* path, char* const* argv){
     }
 
     // Delete all threads except the current one
-    deleteThreadsExec(user_thread);
+    ustl::map<size_t, UserThread*>::iterator i;
+
+    user_thread->getProcess()->threads_lock_.acquire();
+
+    for(i = user_thread->getProcess()->threads_map_.begin(); i != user_thread->getProcess()->threads_map_.end(); i++){
+        if(i->second == user_thread){
+            continue;
+        }
+
+        reinterpret_cast<UserThread*>(i->second)->makeAsynchronousCancel();
+    }
+    user_thread->getProcess()->threads_lock_.release();
+
 
     // Signal to join
-    /* if(user_thread->waited_by_ != NULL){
+    if(user_thread->waited_by_ != nullptr){
         auto waiting = user_thread->waited_by_;
 
         waiting->getProcess()->return_val_lock_.acquire();
         waiting->join_condition_.signal();
         waiting->getProcess()->return_val_lock_.release();
 
-        waiting->waiting_for_ = NULL;
-        user_thread->waited_by_ = NULL;
-    } */
+        waiting->waiting_for_ = nullptr;
+        user_thread->waited_by_ = nullptr;
+    }
 
     fd_ = new_fd;
 
@@ -716,19 +753,4 @@ size_t UserProcess::checkExecArgs(char *const *args) {
     }
 
     return number_of_args;
-}
-
-void UserProcess::deleteThreadsExec(UserThread* user_thread){
-    ustl::map<size_t, UserThread*>::iterator i;
-
-    user_thread->getProcess()->threads_lock_.acquire();
-
-    for(i = user_thread->getProcess()->threads_map_.begin(); i != user_thread->getProcess()->threads_map_.end(); i++){
-        if(i->second == user_thread){
-            continue;
-        }
-
-        reinterpret_cast<UserThread*>(i->second)->makeAsynchronousCancel();
-    }
-    user_thread->getProcess()->threads_lock_.release();
 }

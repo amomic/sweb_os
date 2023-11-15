@@ -272,6 +272,7 @@ void Syscall::pthread_exit([[maybe_unused]]void *value)
     // Store return value
     current_process->thread_retval_map.push_back({current_thread->getTID(), (void *) value});
 
+    // Signal join
     if (current_thread->waited_by_ != nullptr)
     {
         current_thread->waited_by_->join_condition_.signal();
