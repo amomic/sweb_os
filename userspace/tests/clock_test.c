@@ -10,7 +10,7 @@ int main ()
     clock_t time_before_loop = clock();
     printf("Time before loop: %u\n", time_before_loop);
     for(size_t count = 0; count < 1000; count++)
-    {
+    {y
         array[count + 1] = '1';
         array[count] = array[count + 1];
     }
