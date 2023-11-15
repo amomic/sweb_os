@@ -510,16 +510,16 @@ size_t UserProcess::exec(char* path, char* const* argv){
     deleteExecThreads(user_thread);
 
     // Signal to join
-   /* if(user_thread->waited_by_ != nullptr){
+    if(user_thread->waited_by_ != nullptr){
         auto waiting = user_thread->waited_by_;
 
-        waiting->getProcess()->return_val_lock_.acquire();
+        //waiting->getProcess()->return_val_lock_.acquire();
         waiting->join_condition_.signal();
-        waiting->getProcess()->return_val_lock_.release();
+        //waiting->getProcess()->return_val_lock_.release();
 
         waiting->waiting_for_ = nullptr;
         user_thread->waited_by_ = nullptr;
-    }*/
+    }
 
     fd_ = new_fd;
 
