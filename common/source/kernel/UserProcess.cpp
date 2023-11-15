@@ -507,19 +507,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
     }
 
     // Delete all threads except the current one
-    ustl::map<size_t, UserThread*>::iterator i;
-
-    user_thread->getProcess()->threads_lock_.acquire();
-
-    for(i = user_thread->getProcess()->threads_map_.begin(); i != user_thread->getProcess()->threads_map_.end(); i++){
-        if(i->second == user_thread){
-            continue;
-        }
-
-        reinterpret_cast<UserThread*>(i->second)->makeAsynchronousCancel();
-    }
-    user_thread->getProcess()->threads_lock_.release();
-
+    deleteExecThreads(user_thread);
 
     // Signal to join
     if(user_thread->waited_by_ != nullptr){
@@ -753,4 +741,22 @@ size_t UserProcess::checkExecArgs(char *const *args) {
     }
 
     return number_of_args;
+}
+
+void UserProcess::deleteExecThreads(UserThread* current_thread){
+
+    auto calling_process = current_thread->getProcess();
+
+    ustl::map<size_t, UserThread*>::iterator it;
+
+    calling_process->threads_lock_.acquire();
+
+    for(it = calling_process->threads_map_.begin(); it !=calling_process->threads_map_.end(); it++){
+        if(it->second == current_thread) {
+            continue;
+        }
+
+        reinterpret_cast<UserThread*>(it->second)->makeAsynchronousCancel();
+    }
+    calling_process->threads_lock_.release();
 }
