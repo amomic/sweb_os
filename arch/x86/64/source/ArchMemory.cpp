@@ -706,6 +706,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         mapping.pt[mapping.pti].writeable = 1;
         mapping.pt[mapping.pti].cow = 0;
         PageManager::instance()->cow_ref_map_lock.release();
+        
     }
     arch_mem_lock.release();
 }
