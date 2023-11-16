@@ -67,6 +67,10 @@ private:
     uint32 terminal_number_;
 
 
+    bool loadAndInitLoader(int32 &new_fd, int32 &old_fd, char *kernel_path, Loader *&new_loader);
 
+    void setupArguments(Loader *new_loader, size_t args_num, char *const *argv);
+
+    void waitAndSetNewThreadsState();
 };
 

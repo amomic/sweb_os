@@ -423,90 +423,20 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     int32 old_fd = -1;
 
-    if(new_fd >= 0){
-        old_fd = fd_;
-        fd_ = new_fd;
-        new_loader = new Loader(new_fd);
-    } else {
+    if (loadAndInitLoader(new_fd, old_fd, kernel_path, new_loader)) {
+        delete[] kernel_path;
         return -1;
     }
 
-    if(!new_loader || new_fd < 0){
-        debug(USERPROCESS, "[Exec] Couldn't open new fd!\n");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        return -1U;
-    }
-
-    if(!new_loader->loadExecutableAndInitProcess())
-    {
-        debug(USERPROCESS, "[Exec] Creation of new loader failed!\n");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        if(new_loader)
-            delete new_loader;
-        return -1U;
-    }
-
-    if(args_num != 0){
-        // Allocate a physical page for arguments
-        uint64 args_page = PageManager::instance()->allocPPN();
-
-        // Map the virtual page to the physical page
-        loader_->arch_memory_.arch_mem_lock.acquire();
-        uint64 virtual_page = 0;
-        debug(USERPROCESS, "hello!\n");
-
-        bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
-        loader_->arch_memory_.arch_mem_lock.release();
-        assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
-
-        // Calculate the ident address
-        uint64 ident_addr = loader_->arch_memory_.getIdentAddressOfPPN(args_page, PAGE_SIZE);
-        size_t num_of_args = args_num + 1;
-
-        // Initialize virtual and physical addresses
-        uint64 start_p = (num_of_args * sizeof(char*)) + ident_addr;
-        uint64 start_v = (num_of_args * sizeof(char*));
-
-        size_t i = 0, j = 0;
-
-        char* const* args = argv;
-
-        for (i = 0;i < args_num; i++) {
-            *reinterpret_cast<uint64*>(ident_addr) = start_v;
-            ident_addr += sizeof(pointer);
-
-            j = 0;
-
-            while (args[i][j] != '\0') {
-                uint64 tmp_addr = start_p + j;
-                *reinterpret_cast<char*>(tmp_addr) = args[i][j];
-                j++;
-            }
-
-            *reinterpret_cast<char*>(start_p + j) = 0;
-
-            uint64 increment = sizeof(char) * (j + 1);
-            start_v += increment;
-            start_p += increment;
-        }
+    if (args_num != 0) {
+        setupArguments(new_loader, args_num, argv);
     }
 
     deleteExecThreads(user_thread);
 
     fd_ = new_fd;
 
-    threads_lock_.acquire();
-    Scheduler::instance()->yield();
-    threads_lock_.release();
-
-    threads_lock_.acquire();
-    while(threads_alive_ > 1) //TODO check if we decrease this number anywhere?
-    {
-        Scheduler::instance()->yield();
-    }
-    threads_lock_.release();
+    waitAndSetNewThreadsState();
 
     currentThread->loader_ = new_loader;
 
@@ -556,6 +486,76 @@ size_t UserProcess::exec(char* path, char* const* argv){
     }
     user_thread->kill();
     return 0;
+}
+
+bool UserProcess::loadAndInitLoader(int32& new_fd, int32& old_fd, char* kernel_path, Loader*& new_loader) {
+    new_loader = nullptr;
+    old_fd = -1;
+
+    if (new_fd >= 0) {
+        old_fd = fd_;
+        fd_ = new_fd;
+        new_loader = new Loader(new_fd);
+    } else {
+        debug(USERPROCESS, "[Exec] Couldn't open new fd!\n");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        return true;
+    }
+
+    if (!new_loader || new_fd < 0) {
+        debug(USERPROCESS, "[Exec] Couldn't open new fd!\n");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        return true;
+    }
+
+    if (!new_loader->loadExecutableAndInitProcess()) {
+        debug(USERPROCESS, "[Exec] Creation of new loader failed!\n");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        if (new_loader) {
+            delete new_loader;
+        }
+        return true;
+    }
+
+    return false;
+}
+
+void UserProcess::setupArguments(Loader* new_loader, size_t args_num, char* const* argv) {
+    uint64 args_page = PageManager::instance()->allocPPN();
+    new_loader->arch_memory_.arch_mem_lock.acquire();
+    uint64 virtual_page = 0;
+
+    bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
+    new_loader->arch_memory_.arch_mem_lock.release();
+
+    assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
+
+    uint64 ident_addr = new_loader->arch_memory_.getIdentAddressOfPPN(args_page, PAGE_SIZE);
+    size_t num_of_args = args_num + 1;
+    uint64 start_p = (num_of_args * sizeof(char*)) + ident_addr;
+    uint64 start_v = (num_of_args * sizeof(char*));
+
+    for (size_t i = 0, j = 0; i < args_num; i++) {
+        *reinterpret_cast<uint64*>(ident_addr) = start_v;
+        ident_addr += sizeof(pointer);
+
+        j = 0;
+
+        while (argv[i][j] != '\0') {
+            uint64 tmp_addr = start_p + j;
+            *reinterpret_cast<char*>(tmp_addr) = argv[i][j];
+            j++;
+        }
+
+        *reinterpret_cast<char*>(start_p + j) = '\0';
+
+        uint64 increment = sizeof(char) * (j + 1);
+        start_v += increment;
+        start_p += increment;
+    }
 }
 
 void UserProcess::deleteExecThreads(UserThread* current_thread)
@@ -619,6 +619,17 @@ size_t UserProcess::checkExecArgs(char *const *args) {
     }
 
     return number_of_args;
+}
+void UserProcess::waitAndSetNewThreadsState() {
+    threads_lock_.acquire();
+    Scheduler::instance()->yield();
+    threads_lock_.release();
+
+    threads_lock_.acquire();
+    while (threads_alive_ > 1) {
+        Scheduler::instance()->yield();
+    }
+    threads_lock_.release();
 }
 
 pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
