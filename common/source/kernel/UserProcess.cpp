@@ -183,13 +183,17 @@ void UserProcess::CleanThreads(size_t thread)
 }
 
 size_t UserProcess::joinThread(size_t thread, pointer return_val) {
+
     debug(SYSCALL, "joinThread started\n");
     kprintf("*** JOIN STARTED!\n");
-    if((size_t)return_val >= USER_BREAK) // Check if return_val is valid
-        return -1ULL;
 
-    if(currentThread->getTID() == thread) // Self-join check
+    if((size_t)return_val >= USER_BREAK) { // Check if return_val is valid
         return -1ULL;
+    }
+
+    if(currentThread->getTID() == thread) { // Self-join check
+        return -1ULL;
+    }
     debug(SYSCALL, "Initial checks in joinThread done\n");
 
     UserThread* current_thread = reinterpret_cast<UserThread*>(currentThread);
@@ -211,22 +215,27 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
         if(thread_retval_map_entry == current_process->thread_retval_map.end()){ // retval not found in list
             debug(SYSCALL, "retval not found in the map - joinThraed\n");
             kprintf("retval not found in list - exiting -1\n");
+
             current_process->return_val_lock_.release();
             return -1ULL;
         } else { // retval found in list
             debug(SYSCALL, "retval found in the map - joinThread\n");
             kprintf("retval found in map\n");
+
             if(return_val == NULL){
                 thread_retval_map_entry = current_process->thread_retval_map.find(thread);
                 if(thread_retval_map_entry != current_process->thread_retval_map.end())
                     current_process->thread_retval_map.erase(thread);
                 current_process->return_val_lock_.release();
+
                 kprintf("Thread already finished - returning 0\n");
+
                 return 0;
             } else {
                 if(thread_retval_map_entry != current_process->thread_retval_map.end()) {
                     *(size_t *) return_val = (size_t) thread_retval_map_entry->second;
                     current_process->thread_retval_map.erase(thread);
+
                     debug(SYSCALL, "retval is set - joinThraed\n");
                     kprintf("Thread already finished - retval is set! returning 0\n");
                 }
@@ -236,9 +245,11 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
         }
     } else {    // Found in map
         debug(SYSCALL, "thread found in the map - joinThread\n");
+
         if (joining_thread->type_of_join_ == UserThread::DETATCH_STATE::JOINABLE){
             debug(SYSCALL, "Thread is joinable - joinThread\n");
             kprintf("Thread is joinable!\n");
+
             if (current_thread->waited_by_ == nullptr && joining_thread->waited_by_ == nullptr){    // Deadlock check
                 if(joining_thread->waiting_for_ != current_thread){
                     current_thread->waiting_for_ = joining_thread;
@@ -247,18 +258,21 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
                 } else {    // If deadlock detected
                     debug(SYSCALL, "deadlock - joinThread\n");
                     kprintf("ERROR - DEADLOCK! returning -1\n");
+
                     current_process->threads_lock_.release();
                     return -1ULL;
                 }
             } else {    // Waited by some other thread
                 debug(SYSCALL, "Waited by some other thread - joinThread\n");
                 kprintf("ERROR - Waited by some other thread! - returning error -1\n");
+
                 current_process->threads_lock_.release();
                 return -1ULL;
             }
         } else {   // Is detached
             debug(SYSCALL, "Thread is detached - joinThread\n");
             kprintf("ERROR - thread is detached! -1\n");
+
             current_process->threads_lock_.release();
             return -1ULL;
         }
@@ -327,10 +341,13 @@ size_t UserProcess::detachThread(size_t thread) {
         kprintf("Does not exist!\n");
         threads_lock_.release();
         return -1ULL;
+    } else {
+        threads_lock_.release();
     }
 
     auto detach_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
 
+    // Signal to join
     if (detach_thread->waited_by_ != nullptr){
         detach_thread->waited_by_->join_condition_.signal();
 
@@ -343,14 +360,12 @@ size_t UserProcess::detachThread(size_t thread) {
     if (detach_thread->type_of_join_ == UserThread::JOINABLE){
         detach_thread->type_of_join_ = UserThread::DETATCHED;
         detach_thread->state_join_lock_.release();
-        threads_lock_.release();
         kprintfd("Detached state set!\n");
         return 0;
     } else {
         detach_thread->state_join_lock_.release();
         return -1ULL;
     }
-    threads_lock_.release();
     return 0;
 }
 
@@ -441,6 +456,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
         loader_->arch_memory_.arch_mem_lock.acquire();
         uint64 virtual_page = 0;
         debug(USERPROCESS, "hello!\n");
+
         bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
         loader_->arch_memory_.arch_mem_lock.release();
         assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
@@ -460,7 +476,9 @@ size_t UserProcess::exec(char* path, char* const* argv){
         for (i = 0;i < args_num; i++) {
             *reinterpret_cast<uint64*>(ident_addr) = start_v;
             ident_addr += sizeof(pointer);
+
             j = 0;
+
             while (args[i][j] != '\0') {
                 uint64 tmp_addr = start_p + j;
                 *reinterpret_cast<char*>(tmp_addr) = args[i][j];
@@ -475,7 +493,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
         }
     }
 
-    deleteAllThreadsExceptCurrent(user_thread);
+    deleteExecThreads(user_thread);
 
     fd_ = new_fd;
 
@@ -509,8 +527,6 @@ size_t UserProcess::exec(char* path, char* const* argv){
     size_t new_tid = threads_counter_for_id_;
     threads_lock_.release();
 
-    //TODO set RDI, RSI registers
-
     //new thread
     UserThread* new_user_thread = new UserThread(filename_, fs_info_, terminal_number_, this,
                                                  NULL, loader_->getEntryFunction(), new_tid, (void*)args_num, NULL);
@@ -542,7 +558,7 @@ size_t UserProcess::exec(char* path, char* const* argv){
     return 0;
 }
 
-void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
+void UserProcess::deleteExecThreads(UserThread* current_thread)
 {
     auto calling_thread = reinterpret_cast<UserThread*>(current_thread);
     auto calling_process = calling_thread->getProcess();
@@ -552,8 +568,10 @@ void UserProcess::deleteAllThreadsExceptCurrent(UserThread* current_thread)
     calling_process->threads_lock_.acquire();
 
     for(it = calling_process->threads_map_.begin(); it !=calling_process->threads_map_.end(); it++){
-        if(it->second == calling_thread)
+        if(it->second == calling_thread) {
             continue;
+        }
+
         auto handler = reinterpret_cast<UserThread*>(it->second);
         handler->makeAsynchronousCancel();
     }
@@ -578,11 +596,13 @@ size_t UserProcess::checkExecArgs(char *const *args) {
             tmp_size++;
         }
 
-        if(strlen(args[itterator]) > 200)
+        if(strlen(args[itterator]) > 200) {
             return -1;
+        }
 
-        if (reinterpret_cast<size_t>(args[itterator] + tmp_size + 1) >= USER_BREAK)
+        if (reinterpret_cast<size_t>(args[itterator] + tmp_size + 1) >= USER_BREAK) {
             return -1;
+        }
 
         check_arg_size += tmp_size + 1;
     }
@@ -590,11 +610,13 @@ size_t UserProcess::checkExecArgs(char *const *args) {
     number_of_args = itterator;
     check_arg_size += itterator * sizeof(size_t);
 
-    if (check_arg_size >= PAGE_SIZE)
+    if (check_arg_size >= PAGE_SIZE) {
         return static_cast<size_t>(-1);
+    }
 
-    if(number_of_args > 16)
+    if(number_of_args > 16) {
         return -1;
+    }
 
     return number_of_args;
 }

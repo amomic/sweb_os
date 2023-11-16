@@ -51,7 +51,7 @@ public:
 
     void CleanThreads(size_t thread);
     void unmapPage();
-    void deleteAllThreadsExceptCurrent(UserThread* current_thread);
+    void deleteExecThreads(UserThread* current_thread);
     bool CheckStack(size_t pos);
     size_t checkExecArgs(char *const *args);
 
