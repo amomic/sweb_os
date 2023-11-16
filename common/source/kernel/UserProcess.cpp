@@ -341,8 +341,6 @@ size_t UserProcess::detachThread(size_t thread) {
         kprintf("Does not exist!\n");
         threads_lock_.release();
         return -1ULL;
-    } else {
-        threads_lock_.release();
     }
 
     auto detach_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
@@ -360,12 +358,14 @@ size_t UserProcess::detachThread(size_t thread) {
     if (detach_thread->type_of_join_ == UserThread::JOINABLE){
         detach_thread->type_of_join_ = UserThread::DETATCHED;
         detach_thread->state_join_lock_.release();
+        threads_lock_.release();
         kprintfd("Detached state set!\n");
         return 0;
     } else {
         detach_thread->state_join_lock_.release();
         return -1ULL;
     }
+    threads_lock_.release();
     return 0;
 }
 
