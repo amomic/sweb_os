@@ -1,14 +1,13 @@
 //
-// Created by mirza on 19.10.23.
-// Basic Detach Test
+// Created by mirza on 16.11.23.
+// Detachment of Already Running Threads
 
 #include "stdio.h"
 #include "assert.h"
 #include "pthread.h"
 
-void* thread_function(void* arg) {
-    int* value = (int*)arg;
-    *value = 42;
+void *threadFunction(void *arg) {
+    sleep(2);
     pthread_exit(NULL);
     return NULL;
 }
@@ -17,17 +16,20 @@ int main() {
     pthread_t thread;
     int result;
 
-    result = pthread_create(&thread, NULL, thread_function, NULL);
+    result = pthread_create(&thread, NULL, threadFunction, NULL);
     assert(result == 0 && "Thread creation failed");
 
-    // Detach the thread
+    sleep(1);
+
     result = pthread_detach(thread);
-    assert(result == 0 && "Thread detachment failed");
 
     // Check the result and print it
     printf("DETACHED: %d\n", result);
 
-    printf("Detach Test 1 Passed - Basic Detach Test\n");
+    result = pthread_join(thread, NULL);
+    assert(result == -1 && "Joined the thread");
+
+    printf("Basic Detach Test 7 Passed\n");
 
     return 0;
 }
