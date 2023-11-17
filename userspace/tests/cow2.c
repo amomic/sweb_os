@@ -33,7 +33,6 @@ void* func(){
 
 int main()
 {
-
     pthread_t tid;
 
     pthread_create(&tid, NULL,  func, NULL);
