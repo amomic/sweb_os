@@ -352,6 +352,7 @@ size_t UserProcess::detachThread(size_t thread) {
         detach_thread->waited_by_->waiting_for_ = nullptr;
         detach_thread->waited_by_ = nullptr;
     }
+    debug(USERPROCESS, "after join signal");
 
     detach_thread->state_join_lock_.acquire();
 
@@ -363,8 +364,11 @@ size_t UserProcess::detachThread(size_t thread) {
         return 0;
     } else {
         detach_thread->state_join_lock_.release();
+        debug(USERPROCESS, "end");
         return -1ULL;
     }
+
+    debug(USERPROCESS, "end");
     threads_lock_.release();
     return 0;
 }
@@ -423,9 +427,29 @@ size_t UserProcess::exec(char* path, char* const* argv){
 
     int32 old_fd = -1;
 
-    if (loadAndInitLoader(new_fd, old_fd, kernel_path, new_loader)) {
-        delete[] kernel_path;
+    if(new_fd >= 0){
+        old_fd = fd_;
+        fd_ = new_fd;
+        new_loader = new Loader(new_fd);
+    } else {
         return -1;
+    }
+
+    if(!new_loader || new_fd < 0){
+        debug(USERPROCESS, "[Exec] Couldn't open new fd!\n");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        return -1U;
+    }
+
+    if(!new_loader->loadExecutableAndInitProcess())
+    {
+        debug(USERPROCESS, "[Exec] Creation of new loader failed!\n");
+        VfsSyscall::close(new_fd);
+        delete[] kernel_path;
+        if(new_loader)
+            delete new_loader;
+        return -1U;
     }
 
     if (args_num != 0) {
@@ -486,41 +510,6 @@ size_t UserProcess::exec(char* path, char* const* argv){
     }
     user_thread->kill();
     return 0;
-}
-
-bool UserProcess::loadAndInitLoader(int32& new_fd, int32& old_fd, char* kernel_path, Loader*& new_loader) {
-    new_loader = nullptr;
-    old_fd = -1;
-
-    if (new_fd >= 0) {
-        old_fd = fd_;
-        fd_ = new_fd;
-        new_loader = new Loader(new_fd);
-    } else {
-        debug(USERPROCESS, "[Exec] Couldn't open new fd!\n");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        return true;
-    }
-
-    if (!new_loader || new_fd < 0) {
-        debug(USERPROCESS, "[Exec] Couldn't open new fd!\n");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        return true;
-    }
-
-    if (!new_loader->loadExecutableAndInitProcess()) {
-        debug(USERPROCESS, "[Exec] Creation of new loader failed!\n");
-        VfsSyscall::close(new_fd);
-        delete[] kernel_path;
-        if (new_loader) {
-            delete new_loader;
-        }
-        return true;
-    }
-
-    return false;
 }
 
 void UserProcess::setupArguments(Loader* new_loader, size_t args_num, char* const* argv) {
