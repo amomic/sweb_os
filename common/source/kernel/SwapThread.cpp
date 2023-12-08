@@ -18,6 +18,7 @@ SwapThread::SwapThread() : Thread(nullptr, "SwapThread", Thread::KERNEL_THREAD)
 
 SwapThread::~SwapThread()
 {
+    debug(SWAP_THREAD, "constructor of swap thread,s th went wrong\n");
     assert(false && "SwapThread destructor");
 }
 
@@ -29,6 +30,7 @@ SwapThread *SwapThread::instance() {
 
 void SwapThread::Run() {
 
+    debug(SWAP_THREAD, "in run in swapping\n");
     device_ = BDManager::getInstance()->getDeviceByNumber(3);
     device_->setBlockSize(PAGE_SIZE);
     bitmap_ = new Bitmap(device_->getNumBlocks() - pages_number_);
@@ -57,6 +59,7 @@ size_t SwapThread::SwapOutRequest()
 
 void SwapThread::SwapOut(PageTableEntry* pt, size_t pti)
 {
+    debug(SWAP_THREAD, "swap out\n");
     size_t ppn = block_*device_->getBlockSize();
     size_t ret = device_->writeData(ppn, PAGE_SIZE,
                        reinterpret_cast<char *>(ArchMemory::getIdentAddressOfPPN(pt[pti].page_ppn)));
@@ -72,6 +75,7 @@ void SwapThread::SwapOut(PageTableEntry* pt, size_t pti)
 
 void SwapThread::SwapIn(PageTableEntry* pt, size_t pti)
 {
+    debug(SWAP_THREAD, "swap in\n");
     size_t ppn = PageManager::instance()->allocPPN();
     size_t ret = device_->readData(pt[pti].page_ppn, PAGE_SIZE,
                        reinterpret_cast<char *>(ArchMemory::getIdentAddressOfPPN(ppn)));
