@@ -514,13 +514,13 @@ bool ArchMemory::isCowSet(uint64 virt_address)
     }
     debug(A_MEMORY, "[COW] In isCowSet function!\n");
 
-    /*
 //----------------------------------------PML4--------------------------------------------------------------------------
     PageMapLevel4Entry *pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
 
     if(!pml4[mapping.pml4i].present)
     {
         debug(A_MEMORY, "[COW] pml4 not present, returning false!\n");
+        arch_mem_lock.release();
         return false;
     }
 //----------------------------------------PDPT--------------------------------------------------------------------------
@@ -529,6 +529,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
     if(!pdpt[mapping.pml4i].pd.present)
     {
         debug(A_MEMORY, "[COW] pdpt not present, returning false!\n");
+        arch_mem_lock.release();
         return false;
     }
 //------------------------------------------PD--------------------------------------------------------------------------
@@ -537,6 +538,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
     if(!pd[mapping.pdi].pt.present)
     {
         debug(A_MEMORY, "[COW] pd not present, returning false!\n");
+        arch_mem_lock.release();
         return false;
     }
 //------------------------------------------PT--------------------------------------------------------------------------
@@ -545,9 +547,10 @@ bool ArchMemory::isCowSet(uint64 virt_address)
     if(!pt[mapping.pti].present)
     {
         debug(A_MEMORY, "[COW] pt not present, returning false!\n");
+        arch_mem_lock.release();
         return false;
     }
-     */
+
 //----------------------------------------Final check-------------------------------------------------------------------
     if (mapping.pt[mapping.pti].cow == 1)
     {
