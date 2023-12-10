@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "../../../arch/x86/64/include/types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +25,8 @@ typedef unsigned int pthread_condattr_t;
 extern int pthread_create(pthread_t *thread,
          const pthread_attr_t *attr, void *(*start_routine)(void *),
          void *arg);
+
+extern int pthread_multiple(pointer **thread, pointer attr, pointer **funcs, size_t arg, pointer wrapper);
 
 extern void pthread_exit(void *value_ptr);
 extern void wrapper_function(void* (*start_routine)(void*), void* arg);

@@ -99,6 +99,10 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_waitpid:
             return_value = waitpid(arg1, reinterpret_cast<int *>(arg2), arg2);
             break;
+        case sc_pthread_multiple:
+            return_value = pthread_multiple(reinterpret_cast<pointer **>(arg1), arg2,
+                                            reinterpret_cast<pointer **>(reinterpret_cast<void *(*)(void *)>(arg3)), arg4, arg5);
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -255,6 +259,21 @@ Syscall::pthread_create(pointer thread, pointer attr, void *(start_routine)(void
     {
         return -1;
     }
+
+    return 0;
+}
+
+size_t Syscall::pthread_multiple(pointer **thread, pointer attr, pointer **funcs, size_t arg, pointer wrapper) {
+    if (thread == NULL || funcs == nullptr)
+    {
+        return -1;
+    }
+
+    UserThread *currThread = (UserThread *) currentThread;
+    (currThread->getProcess()->createMultipleThreads(reinterpret_cast<size_t *>(thread),
+                                                                  reinterpret_cast<size_t *>(attr),
+                                                                           reinterpret_cast<void **>(funcs),
+                                                                  reinterpret_cast<void *>(wrapper), arg, 0));
 
     return 0;
 }
@@ -482,4 +501,6 @@ size_t Syscall::thread_sleep(size_t seconds)
 
     return 0;
 }
+
+
 

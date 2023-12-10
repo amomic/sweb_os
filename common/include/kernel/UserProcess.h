@@ -25,6 +25,8 @@ public:
 
     virtual void Run(); // not used
     UserThread *createThread(size_t *thread, size_t *attr, void *(*start_routine)(void *), void *wrapper, uint64 argc, size_t args);
+    void
+    createMultipleThreads(size_t* thread, [[maybe_unused]]size_t *attr, void **funcs, void *wrapper, size_t argc, size_t args);
     size_t joinThread(size_t thread, pointer return_val);
     size_t detachThread(size_t thread);
     size_t exec(char *path, char *const *argv);

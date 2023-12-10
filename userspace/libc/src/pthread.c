@@ -12,6 +12,11 @@ int pthread_create(pthread_t *thread, const pthread_attr_t *attr,
     return (int)__syscall(sc_pthread_create, (size_t)thread, (size_t)attr, (size_t)start_routine, (size_t)arg, (size_t)wrapper_function);
 }
 
+int pthread_multiple(pointer **thread, pointer attr, pointer **funcs, pointer arg, pointer wrapper)
+{
+    return (int)__syscall(sc_pthread_multiple, (size_t)thread, (size_t)attr, (size_t)funcs, (size_t)arg, (size_t)wrapper_function);
+}
+
 void wrapper_function(void* (*start_routine)(void*), void* arg)
 {
     pthread_exit(start_routine(arg));

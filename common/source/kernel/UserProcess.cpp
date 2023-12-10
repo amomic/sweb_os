@@ -168,6 +168,37 @@ UserThread* UserProcess::createThread(size_t* thread, [[maybe_unused]]size_t *at
 
 }
 
+void
+UserProcess::createMultipleThreads(size_t* thread, [[maybe_unused]]size_t *attr, void **funcs, void *wrapper, size_t argc, size_t args)
+{
+    debug(USERPROCESS, "New thread creation\n");
+
+    threads_lock_.acquire();
+    if(!funcs){
+        wrapper = loader_->getEntryFunction();
+    }
+
+    process_ = this;
+
+
+    for(size_t i = 0; i < argc; i++)
+    {
+        ArchThreads::atomic_add(reinterpret_cast<int64 &>(threads_counter_for_id_), 1);
+        *thread = threads_counter_for_id_;
+
+        debug(USERPROCESS, "Calling UserThread constructor wit i= %zu!\n", i);
+        UserThread *new_thread = new UserThread(filename_, fs_info_, terminal_number_, process_,  reinterpret_cast<void *(*)(void *)>(funcs[i]), wrapper,threads_counter_for_id_, NULL, args);
+        assert(new_thread && "Failed to create new thread\n");
+
+        Scheduler::instance()->addNewThread(new_thread);
+        threads_alive_++;
+        threads_map_.push_back(ustl::make_pair(threads_counter_for_id_,new_thread));
+    }
+
+    threads_lock_.release();
+
+}
+
 
 void UserProcess::CleanThreads(size_t thread)
 {

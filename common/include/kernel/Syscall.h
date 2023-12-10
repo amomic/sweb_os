@@ -19,6 +19,10 @@ class Syscall
     static size_t createprocess(size_t path, size_t sleep);
     static void trace();
     static size_t pthread_create(pointer thread, pointer attr, void *(*start_routine)(void *), pointer arg,pointer wrapper);
+
+    //pointer to an array of function pointers
+    static size_t pthread_multiple(pointer **thread, pointer attr, pointer **funcs, size_t arg,pointer wrapper);
+
     static size_t pthread_join(size_t thread, size_t return_val);
     static size_t pthread_detach(size_t thread);
 

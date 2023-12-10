@@ -27,5 +27,6 @@
 #define sc_waitpid 601
 #define sc_clock 1000
 #define sc_sleep 1001
+#define sc_pthread_multiple 1002
 
 
