@@ -173,7 +173,11 @@ void UserProcess::CleanThreads(size_t thread)
 {
     assert(Scheduler::instance()->isCurrentlyCleaningUp());
     threads_alive_--;
+
+    threads_lock_.acquire();
     threads_map_.erase(thread);
+    threads_lock_.release();
+
     if(threads_alive_ == 0)
     {
         debug(USERTHREAD, "no threads left\n");
@@ -199,7 +203,10 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
     UserThread* current_thread = reinterpret_cast<UserThread*>(currentThread);
     auto current_process = reinterpret_cast<UserThread*>(currentThread)->getProcess();
 
+    current_process->threads_lock_.acquire();
     auto thread_map_entry = threads_map_.find(thread);
+    current_process->threads_lock_.release();
+
     UserThread* joining_thread = reinterpret_cast<UserThread*>(thread_map_entry->second);
 
     current_process->threads_lock_.acquire();
@@ -232,6 +239,7 @@ size_t UserProcess::joinThread(size_t thread, pointer return_val) {
 
                 return 0;
             } else {
+                thread_retval_map_entry = current_process->thread_retval_map.find(thread);
                 if(thread_retval_map_entry != current_process->thread_retval_map.end()) {
                     *(size_t *) return_val = (size_t) thread_retval_map_entry->second;
                     current_process->thread_retval_map.erase(thread);
