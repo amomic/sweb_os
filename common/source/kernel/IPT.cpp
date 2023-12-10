@@ -87,11 +87,15 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 
 [[maybe_unused]] size_t IPT::swapOutRef(size_t ppn[[maybe_unused]], size_t block_number[[maybe_unused]])
 {
+    sipt_[block_number] = ipt_.at(ppn);
+    ipt_.erase(ppn);
     return 0;
 }
 
 [[maybe_unused]] size_t IPT::swapInRef(size_t page_nr[[maybe_unused]], size_t block_number[[maybe_unused]])
 {
+    ipt_[page_nr] = sipt_.at(block_number);
+    sipt_.erase(block_number);
     return 0;
 }
 
