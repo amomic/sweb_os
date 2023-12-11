@@ -6,8 +6,7 @@
 #include "ArchMemory.h"
 #include "Mutex.h"
 #include "Loader.h"
-#include <umap.h>
-#include <ulist.h>
+#include "types.h"
 
 enum PageType {PAGE[[maybe_unused]], PAGE_TABLE[[maybe_unused]], PAGE_DIR[[maybe_unused]], PDPT [[maybe_unused]]};
 
@@ -31,7 +30,7 @@ public:
 
     [[maybe_unused]] static void addSwappedRef(size_t block_number, ArchMemory *memory);
 
-    static void deleteReference(size_t ppn, ArchMemory *memory);
+    [[maybe_unused]] static void deleteReference(size_t ppn, ArchMemory *memory);
 
     [[maybe_unused]] static void deleteSwappedRef(size_t block_number, ArchMemory *memory);
 

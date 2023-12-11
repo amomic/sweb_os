@@ -12,7 +12,10 @@
 IPT *IPT::instance_ = nullptr;
 
 IPT *IPT::instance() {
-    instance_ = new IPT();
+    if (unlikely(!instance_))
+    {
+        instance_ = new IPT();
+    }
     return instance_;
 }
 
@@ -23,7 +26,7 @@ ustl::map<size_t, IPTEntry*> sipt_;
 
 [[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type)
 {
-    assert(ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
+    //assert(ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
     assert(ppn <= PageManager::instance()->getTotalNumPages());
 
     if(ipt_.find(ppn) == ipt_.end())

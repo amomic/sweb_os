@@ -15,7 +15,8 @@
 
 UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number) :
         threads_lock_("UserProcess::threads_lock_"), pages_lock_("UserProcess::pages_lock_"),
-        return_val_lock_("UserProcess::return_val_lock_"), semaphore_init("UserProcess::semaphore_init",1),
+        return_val_lock_("UserProcess::return_val_lock_"), arch_mem_lock_("UserProcess::arch_mem_lock_"),
+        semaphore_init("UserProcess::semaphore_init",1),
         process_wait_cond_("Semaphore:process_wait_cond_",0), threads_alive_(0),
         fd_(VfsSyscall::open(filename, O_RDONLY)), filename_(filename),
         fs_info_(fs_info), terminal_number_(terminal_number)
@@ -56,6 +57,7 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
         threads_lock_("UserProcess::threads_lock_"),
         pages_lock_("UserProcess::pages_lock_"),
         return_val_lock_("UserProcess::return_val_lock_"),
+        arch_mem_lock_("UserProcess::arch_mem_lock_"),
         semaphore_init("UserProcess::semaphore_init",1),
         process_wait_cond_("Semaphore:process_wait_cond_",0),pid_(process_id),
         fd_(VfsSyscall::open(parent_process.filename_, O_RDONLY)),

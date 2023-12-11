@@ -37,6 +37,7 @@ public:
     Mutex threads_lock_;
     Mutex pages_lock_;
     Mutex return_val_lock_;
+    Mutex arch_mem_lock_;
     Semaphore semaphore_init;
     Semaphore process_wait_cond_;
 

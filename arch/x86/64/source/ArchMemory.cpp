@@ -8,6 +8,7 @@
 #include "UserThread.h"
 #include "Thread.h"
 #include "ProcessRegistry.h"
+#include "IPT.h"
 
 PageMapLevel4Entry kernel_page_map_level_4[PAGE_MAP_LEVEL_4_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTER_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -49,18 +50,12 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
   {
       if(parent_pml4[pml4i].present)
       {
-          //again, will be needed for A2
-          //set cow bit
-          //parent_pml4[pml4i].cow = 1;
-          //set writable bit
-          //parent_pml4[pml4i].writeable = 0;
+          parent_pml4[pml4i].cow = 1;
+          parent_pml4[pml4i].writeable = 0;
+          child_pml4[pml4i] = parent_pml4[pml4i];
 
-          //TODO add a cow reference!
+          IPT::addReference(parent_pml4[pml4i].page_ppn, this, -1, PDPT);
 
-          //arch_mem_lock.release();
-          pdpt_ = PageManager::instance()->allocPPN();
-          //arch_mem_lock.acquire();
-          child_pml4[pml4i].page_ppn = pdpt_;
           debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!\n");
 
 //----------------------------------------PDPT--------------------------------------------------------------------------
@@ -68,28 +63,18 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           PageDirPointerTableEntry *parent_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(parent_pml4[pml4i].page_ppn);
           PageDirPointerTableEntry *child_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(child_pml4[pml4i].page_ppn);
 
-          memcpy(child_pdpt, parent_pdpt, PAGE_SIZE);
-          child_pml4[pml4i].present = 1;
-
           debug(A_MEMORY, "[Fork] Memory copy for PDPT done!\n");
 
           for(uint64 pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++)
           {
               if(parent_pdpt[pdpti].pd.present)
               {
-                  //again, will be needed for A2
-                  //set cow bit
-                  //parent_pdpt[pdpti].pd.cow = 1;
-                  //set writable bit
-                  //parent_pdpt[pdpti].pd.writeable = 0;
+                  assert(parent_pdpt[pdpti].pd.size == 0);
+                  parent_pdpt[pdpti].pd.cow = 1;
+                  parent_pdpt[pdpti].pd.writeable = 0;
+                  child_pdpt[pdpti] = parent_pdpt[pdpti];
 
-                  //TODO add a cow reference!
-                  //TODO delete memcpy's!
-
-                  //arch_mem_lock.release();
-                  pd_ = PageManager::instance()->allocPPN();
-                  //arch_mem_lock.acquire();
-                  child_pdpt[pdpti].pd.page_ppn = pd_;
+                  IPT::addReference(parent_pdpt[pdpti].pd.page_ppn, this, -2, PAGE_DIR);
 
                   debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!\n");
 
@@ -98,8 +83,6 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   PageDirEntry *parent_pd = (PageDirEntry*) getIdentAddressOfPPN(parent_pdpt[pdpti].pd.page_ppn);
                   PageDirEntry *child_pd = (PageDirEntry*) getIdentAddressOfPPN(child_pdpt[pdpti].pd.page_ppn);
 
-                  memcpy(child_pd, parent_pd, PAGE_SIZE);
-                  child_pdpt[pdpti].pd.present = 1;
 
                   debug(A_MEMORY, "[Fork] Memory copy for PD done!\n");
 
@@ -107,19 +90,13 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   {
                       if(parent_pd[pdi].pt.present)
                       {
-                          //again, will be neded for A2
-                          //set cow bit
-                          //parent_pd[pdi].pt.cow = 1;
-                          //set writable bit
-                          //parent_pd[pdi].pt.writeable = 0;
+                          assert(parent_pd[pdi].pt.size == 0);
+                          parent_pd[pdi].pt.cow = 1;
+                          parent_pd[pdi].pt.writeable = 0;
+                          child_pd[pdi] = parent_pd[pdi];
 
-                          //TODO add a cow reference!
-                          //TODO delete memcpy's!
+                          IPT::addReference(parent_pd[pdi].pt.page_ppn, this, -3, PAGE_TABLE);
 
-                          //arch_mem_lock.release();
-                          pt_ = PageManager::instance()->allocPPN();
-                          //arch_mem_lock.acquire();
-                          child_pd[pdi].pt.page_ppn = pt_;
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
 //------------------------------------------PT--------------------------------------------------------------------------
@@ -127,48 +104,42 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           PageTableEntry *parent_pt = (PageTableEntry*) getIdentAddressOfPPN(parent_pd[pdi].pt.page_ppn);
                           PageTableEntry *child_pt = (PageTableEntry*) getIdentAddressOfPPN(child_pd[pdi].pt.page_ppn);
 
-                          memcpy(child_pt, parent_pt, PAGE_SIZE);
-                          child_pd[pdi].pt.present = 1;
-
-
                           debug(A_MEMORY, "[Fork] Memory copy for PT done!\n");
 
                           for(uint64 pti = 0; pti < PAGE_TABLE_ENTRIES; pti++)
                           {
                               if(parent_pt[pti].present)
                               {
-                                  //again, will be needed for A2
-                                  //set cow bit
                                   parent_pt[pti].cow = 1;
-                                  child_pt[pti].cow = 1;
-                                  //set writable bit
                                   parent_pt[pti].writeable = 0;
-                                  child_pt[pti].writeable = 0;
+                                  child_pt[pti] = parent_pt[pti];
+                                  //child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
 
-                                  child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
-
-                                  //TODO add a cow reference, for the first time increase it by 2!
-
-                                  //end_level_ = PageManager::instance()->allocPPN(PAGE_SIZE);
-                                  //child_pt[pti].page_ppn = end_level_;
-
-                                  //void*parent_ = (void*)getIdentAddressOfPPN(parent_pt[pti].page_ppn);
-                                  //void* child_ = (void*) getIdentAddressOfPPN(child_pt[pti].page_ppn);
-                                  //memcpy(child_,parent_, PAGE_SIZE);
-
-                                  //child_pt[pti].present = 1;
-                                  //parent_pt[pti].present = 1;
+                                  assert(!parent_pt[pti].swapped && "Present bit has to be 0 if marked as swapped!");
 
                                   debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
                                   debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
-                                  PageManager::instance()->cow_ref_map_lock.acquire();
-                                  PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second++;
-                                  debug(A_MEMORY, "[DEBUG] cow ref map address %zu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->first);
-                                  debug(A_MEMORY, "[DEBUG] cow ref map count %lu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second);
-                                  PageManager::instance()->cow_ref_map_lock.release();
+
+                                  IPT::addReference(parent_pt[pti].page_ppn, this,((((((pml4i << 9) | pdpti) << 9) | pdi) << 9) | pti), PAGE);
+
+
+                                  //PageManager::instance()->cow_ref_map_lock.acquire();
+                                  //PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second++;
+                                  //debug(A_MEMORY, "[DEBUG] cow ref map address %zu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->first);
+                                  //debug(A_MEMORY, "[DEBUG] cow ref map count %lu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second);
+                                  //PageManager::instance()->cow_ref_map_lock.release();
                                   //debug(A_MEMORY, "Reference count is: %zu\n", ref_count);
 
                                   debug(A_MEMORY, "[Fork] PT assigned to child.\n");
+                              }
+                              else if(parent_pt[pti].swapped)
+                              {
+                                  parent_pt[pti].cow = 1;
+                                  parent_pt[pti].writeable = 0;
+
+                                  child_pt[pti] = parent_pt[pti];
+
+                                  IPT::addSwappedRef(parent_pt[pti].page_ppn, this);
                               }
                           }
                       }
@@ -513,7 +484,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
         return false;
     }
     debug(A_MEMORY, "[COW] In isCowSet function!\n");
-
+/*
 //----------------------------------------PML4--------------------------------------------------------------------------
     PageMapLevel4Entry *pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
 
@@ -550,7 +521,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
         arch_mem_lock.release();
         return false;
     }
-
+*/
 //----------------------------------------Final check-------------------------------------------------------------------
     if (mapping.pt[mapping.pti].cow == 1)
     {
