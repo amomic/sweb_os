@@ -9,6 +9,7 @@
 #include "Thread.h"
 #include "ProcessRegistry.h"
 #include "IPT.h"
+#include "SwapThread.h"
 
 PageMapLevel4Entry kernel_page_map_level_4[PAGE_MAP_LEVEL_4_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTER_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -49,13 +50,15 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
   for(uint64 pml4i = 0; pml4i < PAGE_MAP_LEVEL_4_ENTRIES / 2; pml4i++)
   {
       if(parent_pml4[pml4i].present)
-      {
+      {/*
           parent_pml4[pml4i].cow = 1;
           parent_pml4[pml4i].writeable = 0;
           child_pml4[pml4i] = parent_pml4[pml4i];
 
           IPT::addReference(parent_pml4[pml4i].page_ppn, this, -1, PDPT);
-
+*/
+          pdpt_ = PageManager::instance()->allocPPN();//TODO DELETE THIS
+          child_pml4[pml4i].page_ppn = pdpt_;//TODO DELETE THIS
           debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!\n");
 
 //----------------------------------------PDPT--------------------------------------------------------------------------
@@ -63,18 +66,24 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           PageDirPointerTableEntry *parent_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(parent_pml4[pml4i].page_ppn);
           PageDirPointerTableEntry *child_pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(child_pml4[pml4i].page_ppn);
 
+          memcpy(child_pdpt, parent_pdpt, PAGE_SIZE); //TODO DELETE THIS
+          child_pml4[pml4i].present = 1; //TODO DELETE THIS
+
           debug(A_MEMORY, "[Fork] Memory copy for PDPT done!\n");
 
           for(uint64 pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++)
           {
               if(parent_pdpt[pdpti].pd.present)
-              {
+              {/*
                   assert(parent_pdpt[pdpti].pd.size == 0);
                   parent_pdpt[pdpti].pd.cow = 1;
                   parent_pdpt[pdpti].pd.writeable = 0;
                   child_pdpt[pdpti] = parent_pdpt[pdpti];
 
                   IPT::addReference(parent_pdpt[pdpti].pd.page_ppn, this, -2, PAGE_DIR);
+*/
+                  pd_ = PageManager::instance()->allocPPN(); //TODO DELETE THIS
+                  child_pdpt[pdpti].pd.page_ppn = pd_;//TODO DELETE THIS
 
                   debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!\n");
 
@@ -83,19 +92,24 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                   PageDirEntry *parent_pd = (PageDirEntry*) getIdentAddressOfPPN(parent_pdpt[pdpti].pd.page_ppn);
                   PageDirEntry *child_pd = (PageDirEntry*) getIdentAddressOfPPN(child_pdpt[pdpti].pd.page_ppn);
 
+                  memcpy(child_pd, parent_pd, PAGE_SIZE);//TODO DELETE THIS
+                  child_pdpt[pdpti].pd.present = 1;//TODO DELETE THIS
 
                   debug(A_MEMORY, "[Fork] Memory copy for PD done!\n");
 
                   for(uint64 pdi = 0; pdi < PAGE_DIR_ENTRIES; pdi++)
                   {
                       if(parent_pd[pdi].pt.present)
-                      {
+                      {/*
                           assert(parent_pd[pdi].pt.size == 0);
                           parent_pd[pdi].pt.cow = 1;
                           parent_pd[pdi].pt.writeable = 0;
                           child_pd[pdi] = parent_pd[pdi];
 
                           IPT::addReference(parent_pd[pdi].pt.page_ppn, this, -3, PAGE_TABLE);
+*/
+                          pt_ = PageManager::instance()->allocPPN();//TODO DELETE THIS
+                          child_pd[pdi].pt.page_ppn = pt_;//TODO DELETE THIS
 
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
@@ -103,6 +117,9 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                           PageTableEntry *parent_pt = (PageTableEntry*) getIdentAddressOfPPN(parent_pd[pdi].pt.page_ppn);
                           PageTableEntry *child_pt = (PageTableEntry*) getIdentAddressOfPPN(child_pd[pdi].pt.page_ppn);
+
+                          memcpy(child_pt, parent_pt, PAGE_SIZE);//TODO DELETE THIS
+                          child_pd[pdi].pt.present = 1;//TODO DELETE THIS
 
                           debug(A_MEMORY, "[Fork] Memory copy for PT done!\n");
 
@@ -112,23 +129,15 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                               {
                                   parent_pt[pti].cow = 1;
                                   parent_pt[pti].writeable = 0;
-                                  child_pt[pti] = parent_pt[pti];
-                                  //child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
+                                  //child_pt[pti] = parent_pt[pti];
+                                  child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
 
-                                  assert(!parent_pt[pti].swapped && "Present bit has to be 0 if marked as swapped!");
+                                  //assert(!parent_pt[pti].swapped && "Present bit has to be 0 if marked as swapped!");
 
                                   debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
                                   debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
 
                                   IPT::addReference(parent_pt[pti].page_ppn, this,((((((pml4i << 9) | pdpti) << 9) | pdi) << 9) | pti), PAGE);
-
-
-                                  //PageManager::instance()->cow_ref_map_lock.acquire();
-                                  //PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second++;
-                                  //debug(A_MEMORY, "[DEBUG] cow ref map address %zu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->first);
-                                  //debug(A_MEMORY, "[DEBUG] cow ref map count %lu\n", PageManager::instance()->cow_ref_map.find(parent_pt[pti].page_ppn)->second);
-                                  //PageManager::instance()->cow_ref_map_lock.release();
-                                  //debug(A_MEMORY, "Reference count is: %zu\n", ref_count);
 
                                   debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
@@ -173,9 +182,21 @@ bool ArchMemory::unmapPage(uint64 virtual_page)
   ArchMemoryMapping m = resolveMapping(virtual_page);
 
   assert(m.page_ppn != 0 && m.page_size == PAGE_SIZE && m.pt[m.pti].present);
+
   m.pt[m.pti].present = 0;
-  PageManager::instance()->freePPN(m.page_ppn);
+  m.pt[m.pti].cow = 0;
+
+  IPT::deleteReference(m.pt[m.pti].page_ppn, this);
+
+  if(IPT::getRefCount(m.pt[m.pti].page_ppn) == 0)
+  {
+      PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
+  }
+
+  //PageManager::instance()->freePPN(m.page_ppn);
   ((uint64*)m.pt)[m.pti] = 0; // for easier debugging
+
+
   bool empty = checkAndRemove<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti);
   if (empty)
   {
@@ -241,12 +262,17 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
 
   if (m.page_ppn == 0)
   {
-    insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, physical_page, 0, 0, user_access, 1);
+    m.page_ppn = physical_page;
 
+    IPT::addReference(physical_page, this, ((((((m.pml4i << 9) | m.pdpti) << 9) | m.pdi) << 9) | m.pti), PAGE);
+    m = resolveMapping(page_map_level_4_, virtual_page);
+
+    insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, physical_page, 0, 0, user_access, 1);
+/*
     PageManager::instance()->cow_ref_map_lock.acquire();
     debug(A_MEMORY, "\n\n\n %zu \n\n\n", m.pt_ppn);
-    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)physical_page, 1)); //TODO check which ppn needs to be here
-    PageManager::instance()->cow_ref_map_lock.release();
+    PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)physical_page, 1)); //TODO DELETE
+    PageManager::instance()->cow_ref_map_lock.release();*/
     return true;
   }
 
@@ -257,6 +283,7 @@ ArchMemory::~ArchMemory()
 {
   assert(currentThread->kernel_registers_->cr3 != page_map_level_4_ * PAGE_SIZE && "thread deletes its own arch memory");
 
+  IPT::ipt_lock_.acquire();
   arch_mem_lock.acquire();
 
   PageMapLevel4Entry* pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
@@ -281,40 +308,55 @@ ArchMemory::~ArchMemory()
               {
                 if (pt[pti].present)
                 {
-                  PageManager::instance()->cow_ref_map_lock.acquire();
-                  PageManager::instance()->cow_ref_map.find(pt[pti].page_ppn)->second--;
+                    IPT::deleteReference(pt[pti].page_ppn, this);
 
-                  if(PageManager::instance()->cow_ref_map.find(pt[pti].page_ppn)->second == 0)
-                  {
-                      PageManager::instance()->iterator_cow_ref_map = PageManager::instance()->cow_ref_map.find(pt[pti].page_ppn);
-                      PageManager::instance()->cow_ref_map.erase(PageManager::instance()->iterator_cow_ref_map);
-
-                      debug(A_MEMORY, "Ref count is 0, freeing the page!\n");
-                      pt[pti].present = 0;
-                      PageManager::instance()->freePPN(pt[pti].page_ppn);
-                  }
-                  else
-                  {
-                      debug(A_MEMORY, "Ref count is not 0, reference deleted!\n");
-                  }
-                  PageManager::instance()->cow_ref_map_lock.release();
+                    if(IPT::getRefCount(pt[pti].page_ppn) == 0)
+                    {
+                        PageManager::instance()->freePPN(pt[pti].page_ppn);
+                    }
                 }
               }
-              pd[pdi].pt.present = 0;
-              PageManager::instance()->freePPN(pd[pdi].pt.page_ppn);
+              pd[pdi].pt.present = 0; //TODO DELETE THIS
+              PageManager::instance()->freePPN(pd[pdi].pt.page_ppn);//TODO DELETE THIS
+
+              /*
+              IPT::deleteReference(pd[pdi].pt.page_ppn, this);
+
+              if(IPT::getRefCount(pd[pdi].pt.page_ppn) == 0)
+              {
+                  PageManager::instance()->freePPN(pd[pdi].pt.page_ppn);
+              }
+               */
             }
           }
-          pdpt[pdpti].pd.present = 0;
-          PageManager::instance()->freePPN(pdpt[pdpti].pd.page_ppn);
+          pdpt[pdpti].pd.present = 0;//TODO DELETE THIS
+          PageManager::instance()->freePPN(pdpt[pdpti].pd.page_ppn);//TODO DELETE THIS
+
+          /*
+          IPT::deleteReference(pdpt[pdpti].pd.page_ppn, this);
+
+          if(IPT::getRefCount(pdpt[pdpti].pd.page_ppn) == 0)
+          {
+              PageManager::instance()->freePPN(pdpt[pdpti].pd.page_ppn);
+          }*/
         }
       }
-      pml4[pml4i].present = 0;
-      PageManager::instance()->freePPN(pml4[pml4i].page_ppn);
+      pml4[pml4i].present = 0;//TODO DELETE THIS
+      PageManager::instance()->freePPN(pml4[pml4i].page_ppn);//TODO DELETE THIS
+
+      /*
+      IPT::deleteReference(pml4[pml4i].page_ppn, this);
+
+      if(IPT::getRefCount(pml4[pml4i].page_ppn) == 0)
+      {
+          PageManager::instance()->freePPN(pml4[pml4i].page_ppn);
+      }*/
     }
   }
   PageManager::instance()->freePPN(page_map_level_4_);
 
   arch_mem_lock.release();
+  IPT::ipt_lock_.release();
 }
 
 pointer ArchMemory::checkAddressValid(uint64 vaddress_to_check)
@@ -497,7 +539,7 @@ bool ArchMemory::isCowSet(uint64 virt_address)
 //----------------------------------------PDPT--------------------------------------------------------------------------
     PageDirPointerTableEntry *pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(pml4[mapping.pml4i].page_ppn);
 
-    if(!pdpt[mapping.pml4i].pd.present)
+    if(!pdpt[mapping.pdpti].pd.present)
     {
         debug(A_MEMORY, "[COW] pdpt not present, returning false!\n");
         arch_mem_lock.release();
@@ -547,140 +589,167 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
     arch_mem_lock.acquire();
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
 
-    //TODO add an iterator for the allocated pages?
     //auto iterator = alloc_pages->begin();
 
 //----------------------------------------PML4--------------------------------------------------------------------------
     if(mapping.pml4[mapping.pml4i].cow)
-    {
-        debug(A_MEMORY, "[COW] PML4 marked as COW, for A1 - this should not happen!\n");
+    {/*
+        debug(A_MEMORY, "[COW] PDPT marked as COW!\n");
 
-        /* Tutors input - we don't need cow for all levels for A1, only the last level is needed (the actual page)
-         * this code will come in handy for A2 then :)
-         *
-        debug(A_MEMORY, "[COW] PDPT marked as cow and will be copied!\n");
+        //Last reference
+        if(IPT::getRefCount(mapping.pml4[mapping.pml4i].page_ppn) == 1)
+        {
+            //Set relevant bits
+            debug(A_MEMORY, "[COW] PDPT is last reference and will be writable from this point!\n");
+            mapping.pml4[mapping.pml4i].cow = 0;
+            mapping.pml4[mapping.pml4i].writeable = 1;
+        }
+        else //Not last reference
+        {
+            debug(A_MEMORY, "[COW] PDPT is NOT last reference and will be copied!\n");
+            auto pdpt_page= (++iterator)->first;
+            alloc_pages->at(iterator->first) = true;
 
-        // need to check the reference count of this level
-        // if it's the last cow reference set the two lines below
-        //debug(A_MEMORY, "[COW] Last reference of PDPT -> will be writable from now on!\n");
-        //mapping.pml4[mapping.pml4i].cow = 0;
-        //mapping.pml4[mapping.pml4i].writeable = 1;
+            //Delete reference from IPT
+            IPT::deleteReference(mapping.pml4[mapping.pml4i].page_ppn, this);
 
-        // else copy the pdpt? somehow
-        debug(A_MEMORY, "[COW] PDPT is not the last reference, writable stays 0, page is copied!\n");
-        auto page_pdpt = (++iterator)->first;
-        alloc_pages->at(iterator->first) = true;
+            //Get ppn for cow page
+            size_t pdpt_cow = getIdentAddressOfPPN(mapping.pml4[mapping.pml4i].page_ppn);
 
-        // copying the page
-        size_t cow_pdpt = getIdentAddressOfPPN(mapping.pml4[mapping.pml4i].page_ppn);
-        memcpy((void*) getIdentAddressOfPPN(page_pdpt), (void*)cow_pdpt, PAGE_SIZE);
+            //Copy page
+            memcpy((void*) getIdentAddressOfPPN(pdpt_page), (void*)pdpt_cow, PAGE_SIZE);
 
-        mapping.pml4[mapping.pml4i].page_ppn = page_pdpt;
-        mapping.pml4[mapping.pml4i].writeable = 1;
-        mapping.pml4[mapping.pml4i].cow = 0;
+            //Set relevant bits and pages
+            mapping.pml4[mapping.pml4i].cow = 0;
+            mapping.pml4[mapping.pml4i].writeable = 1;
+            mapping.pml4[mapping.pml4i].page_ppn = pdpt_page;
 
-        mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
-        */
+            //Add new reference
+            IPT::addReference(mapping.pml4[mapping.pml4i].page_ppn, this, -1, PDPT);
+
+            //Set new mapping
+            mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+        }*/
     }
 //----------------------------------------PDPT--------------------------------------------------------------------------
     if(mapping.pdpt[mapping.pdpti].pd.cow)
-    {
-        debug(A_MEMORY, "[COW] PDPT marked as COW, for A1 - this should not happen!\n");
+    {/*
+        debug(A_MEMORY, "[COW] PD marked as COW!\n");
 
-        /* Tutors input - we don't need cow for all levels for A1, only the last level is needed (the actual page)
-         * this code will come in handy for A2 then :)
-         *
-        debug(A_MEMORY, "[COW] PD marked as cow and will be copied!\n");
+        //Last reference
+        if(IPT::getRefCount(mapping.pdpt[mapping.pdpti].pd.page_ppn) == 1)
+        {
+            //Set relevant bits
+            debug(A_MEMORY, "[COW] PD is last reference and will be writable from this point!\n");
+            mapping.pdpt[mapping.pdpti].pd.cow = 0;
+            mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+        }
+        else //Not last reference
+        {
+            debug(A_MEMORY, "[COW] PD is NOT last reference and will be copied!\n");
+            auto pd_page= (++iterator)->first;
+            alloc_pages->at(iterator->first) = true;
 
-        //TODO need to check the reference count of this level
-        //TODO if its the last cow reference set the two lines below
-        //debug(A_MEMORY, "[COW] Last reference of PD -> will be writable from now on!\n");
-        //mapping.pdpt[mapping.pdpti].pd.cow = 0;
-        //mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+            //Delete reference from IPT
+            IPT::deleteReference(mapping.pdpt[mapping.pdpti].pd.page_ppn, this);
 
-        //TODO else copy the pd?
-        debug(A_MEMORY, "[COW] PD is not the last reference, writable stays 0, page is copied!\n");
-        auto page_pd = (++iterator)->first;
-        alloc_pages->at(iterator->first) = true;
+            //Get ppn for cow page
+            size_t pd_cow = getIdentAddressOfPPN(mapping.pdpt[mapping.pdpti].pd.page_ppn);
 
-        // copying the page
-        size_t cow_pd = getIdentAddressOfPPN(mapping.pdpt[mapping.pdpti].pd.page_ppn);
-        memcpy((void*) getIdentAddressOfPPN(page_pd), (void*)cow_pd, PAGE_SIZE);
+            //Copy page
+            memcpy((void*) getIdentAddressOfPPN(pd_page), (void*)pd_cow, PAGE_SIZE);
 
-        mapping.pdpt[mapping.pdpti].pd.page_ppn = page_pd;
-        mapping.pdpt[mapping.pdpti].pd.writeable = 1;
-        mapping.pdpt[mapping.pdpti].pd.cow = 0;
+            //Set relevant bits and pages
+            mapping.pdpt[mapping.pdpti].pd.cow = 0;
+            mapping.pdpt[mapping.pdpti].pd.writeable = 1;
+            mapping.pdpt[mapping.pdpti].pd.page_ppn = pd_page;
 
-        mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
-         */
+            //Add new reference
+            IPT::addReference(mapping.pdpt[mapping.pdpti].pd.page_ppn, this, -2, PAGE_DIR);
+
+            //Set new mapping
+            mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+        }*/
     }
 //------------------------------------------PD--------------------------------------------------------------------------
     if(mapping.pd[mapping.pdi].pt.cow)
-    {
-        debug(A_MEMORY, "[COW] PD marked as COW, for A1 - this should not happen!\n");
+    {/*
+        debug(A_MEMORY, "[COW] PT marked as COW!\n");
 
-        /* Tutors input - we don't need cow for all levels for A1, only the last level is needed (the actual page)
-         * this code will come in handy for A2 then :)
-         *
-        debug(A_MEMORY, "[COW] PT marked as cow and will be copied!\n");
+        //Last reference
+        if(IPT::getRefCount(mapping.pd[mapping.pdi].pt.page_ppn) == 1)
+        {
+            //Set relevant bits
+            debug(A_MEMORY, "[COW] PT is last reference and will be writable from this point!\n");
+            mapping.pd[mapping.pdi].pt.cow = 0;
+            mapping.pd[mapping.pdi].pt.writeable = 1;
+        }
+        else //Not last reference
+        {
+            debug(A_MEMORY, "[COW] PT is NOT last reference and will be copied!\n");
+            auto pt_page= (++iterator)->first;
+            alloc_pages->at(iterator->first) = true;
 
-        //TODO need to check the reference count of this level
-        //TODO if its the last cow reference set the two lines below
-        //debug(A_MEMORY, "[COW] Last reference of PT -> will be writable from now on!\n");
-        //mapping.pd[mapping.pdi].pt.cow = 0;
-        //mapping.pd[mapping.pdi].pt.writeable = 1;
+            //Delete reference from IPT
+            IPT::deleteReference(mapping.pd[mapping.pdi].pt.page_ppn, this);
 
-        //TODO else copy the pt?
-        debug(A_MEMORY, "[COW] PT is not the last reference, writable stays 0, page is copied!\n");
-        auto page_pt = (++iterator)->first;
-        alloc_pages->at(iterator->first) = true;
+            //Get ppn for cow page
+            size_t pt_cow = getIdentAddressOfPPN(mapping.pd[mapping.pdi].pt.page_ppn);
 
-        // copying the page
-        size_t cow_pt = getIdentAddressOfPPN(mapping.pd[mapping.pdi].pt.page_ppn);
-        memcpy((void*) getIdentAddressOfPPN(page_pt), (void*)cow_pt, PAGE_SIZE);
+            //Copy page
+            memcpy((void*) getIdentAddressOfPPN(pt_page), (void*)pt_cow, PAGE_SIZE);
 
-        mapping.pd[mapping.pdi].pt.page_ppn = page_pt;
-        mapping.pd[mapping.pdi].pt.writeable = 1;
-        mapping.pd[mapping.pdi].pt.cow = 0;
+            //Set relevant bits and pages
+            mapping.pd[mapping.pdi].pt.cow = 0;
+            mapping.pd[mapping.pdi].pt.writeable = 1;
+            mapping.pd[mapping.pdi].pt.page_ppn = pt_page;
 
-        mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
-        */
+            //Add new reference
+            IPT::addReference(mapping.pd[mapping.pdi].pt.page_ppn, this, -3, PAGE_TABLE);
+
+            //Set new mapping
+            mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
+        }*/
     }
-    debug(A_MEMORY, "Child PPN is : %d\n", mapping.pt[mapping.pti].page_ppn );
+
+    debug(A_MEMORY, "Child PPN is : %d\n", mapping.pt[mapping.pti].page_ppn);
     size_t cow_page = getIdentAddressOfPPN(mapping.pt[mapping.pti].page_ppn);
+
 //------------------------------------------PT--------------------------------------------------------------------------
     if(mapping.pt[mapping.pti].cow)
     {
         debug(A_MEMORY, "[COW] Page marked as cow and will be copied!\n");
 
         debug(A_MEMORY, "[COW] Cow called in process with PID: %zu\n ",ProcessRegistry::instance()->process_count_);
-        PageManager::instance()->cow_ref_map_lock.acquire();
-        PageManager::instance()->iterator_cow_ref_map = PageManager::instance()->cow_ref_map.find(mapping.pt[mapping.pti].page_ppn);
 
-        if(PageManager::instance()->iterator_cow_ref_map->second == 1)
+        //Last reference
+        if(IPT::getRefCount(mapping.pt[mapping.pti].page_ppn) == 1)
         {
-            debug(A_MEMORY, "[COW] Page is the last reference, writable changes to 1, page does not get copied!\n");
-
+            //Set relevant bits
+            debug(A_MEMORY, "[COW] Page is last reference and will be writable from this point!\n");
+            mapping.pt[mapping.pti].cow = 0;
+            mapping.pt[mapping.pti].writeable = 1;
         }
-        else
+        else //Not last reference
         {
-            auto page_cow = alloc_pages->front().first;
+            debug(A_MEMORY, "[COW] Page is NOT last reference and will be copied!\n");
+            auto cow_copy_page= alloc_pages->front().first;
             alloc_pages->front().second = true;
 
-            // copying the page
-            memcpy((void*) getIdentAddressOfPPN(page_cow), (void*) cow_page, PAGE_SIZE);
-            debug(A_MEMORY, "[COW] Page is not the last reference, writable stays to 0, page gets copied!\n");
-            PageManager::instance()->iterator_cow_ref_map->second--;
+            //Delete reference from IPT
+            IPT::deleteReference(mapping.pt[mapping.pti].page_ppn, this);
 
-            debug(A_MEMORY, "[DEBUG COPY COW] cow ref map address %zu\n", PageManager::instance()->cow_ref_map.find(mapping.pt[mapping.pti].page_ppn)->first);
-            debug(A_MEMORY, "[DEBUG COPY COW] cow ref map count %lu\n", PageManager::instance()->cow_ref_map.find(mapping.pt[mapping.pti].page_ppn)->second);
-            mapping.pt[mapping.pti].page_ppn = page_cow;
+            //Copy page
+            memcpy((void*) getIdentAddressOfPPN(cow_copy_page), (void*)cow_page, PAGE_SIZE);
+
+            //Set relevant bits and pages
+            mapping.pt[mapping.pti].cow = 0;
+            mapping.pt[mapping.pti].writeable = 1;
+            mapping.pt[mapping.pti].page_ppn = cow_copy_page;
+
+            //Add new reference
+            IPT::addReference(mapping.pt[mapping.pti].page_ppn, this, ((((((mapping.pml4i << 9) | mapping.pdpti) << 9) | mapping.pdi) << 9) | mapping.pti), PAGE);
         }
-
-        mapping.pt[mapping.pti].writeable = 1;
-        mapping.pt[mapping.pti].cow = 0;
-        PageManager::instance()->cow_ref_map_lock.release();
-        
     }
     arch_mem_lock.release();
 }
