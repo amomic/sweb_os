@@ -26,7 +26,7 @@ class SwapThread : public Thread {
 public:
     SwapThread();
     ~SwapThread();
-    void Run();
+    void Run() override;
     static SwapThread *instance();
     size_t pages_number_;
     Bitmap* bitmap_;
@@ -41,11 +41,11 @@ public:
 
     void addCond(size_t found);
     static size_t randomPRA();
+    size_t number_of_blocks_;
 
 private:
     static SwapThread *instance_;
 
-    [[maybe_unused]]bool checkDone([[maybe_unused]]SwapRequest *done);
 
 };
 
