@@ -1,6 +1,4 @@
-//
-// Created by amar on 12/10/23.
-//
+
 #pragma once
 
 #include "ArchMemory.h"
@@ -41,6 +39,8 @@ public:
     [[maybe_unused]] static size_t swapOutRef(size_t ppn, size_t block_number);
 
     [[maybe_unused]] static size_t swapInRef(size_t page_nr, size_t block_number);
+
+    IPTEntry *GetIPT(size_t ppn);
 };
 
 extern ustl::map<size_t, IPTEntry*> ipt_;

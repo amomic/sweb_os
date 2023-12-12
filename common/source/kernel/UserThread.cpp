@@ -19,6 +19,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
         tid_(tid),
         state_join_lock_("UserThread::state_join_lock_"),
         join_condition_(&userProcess->return_val_lock_, "UserThread::join_condition_"),
+        swap_condition_(&state_join_lock_, "UserTHread::swap_cond"),
         terminal_number_(terminal_number)
 {
     start_clock_tcs_ = ArchThreads::rdtsc();
@@ -80,6 +81,7 @@ UserThread::UserThread(const UserThread  &process_thread_pointer, UserProcess *p
         tid_(thread_id),
         state_join_lock_("UserThread::state_join_lock_"),
         join_condition_(&parent_process->return_val_lock_, "UserThread::join_condition_"),
+        swap_condition_(&state_join_lock_, "UserTHread::swap_cond"),
         stack_start(process_thread_pointer.stack_start),
         stack_end(process_thread_pointer.stack_end),
         terminal_number_(terminal_number){

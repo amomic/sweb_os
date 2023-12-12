@@ -9,7 +9,7 @@
 #include "KernelMemoryManager.h"
 #include "assert.h"
 #include "Bitmap.h"
-
+#include "SwapThread.h"
 PageManager pm;
 
 PageManager* PageManager::instance_ = nullptr;
@@ -213,7 +213,9 @@ uint32 PageManager::allocPPN(uint32 page_size)
 
   if (found == 0)
   {
-    assert(false && "PageManager::allocPPN: Out of memory / No more free physical pages");
+     SwapThread::instance()->addCond(found);
+      memset((void*)ArchMemory::getIdentAddressOfPPN(found), 0xFF, PAGE_SIZE);
+
   }
 
   const char* page_ident_addr = (const char*)ArchMemory::getIdentAddressOfPPN(found);

@@ -26,6 +26,9 @@ class Thread
     static const char* threadStatePrintable[3];
 
     enum TYPE { KERNEL_THREAD, USER_THREAD };
+    enum SWAP_TYPE {
+        SWAP_IN= 1, SWAP_OUT = 0
+    };
 
     /**
      * Constructor for a new thread with a given working directory, name and type

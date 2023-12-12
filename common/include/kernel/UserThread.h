@@ -41,7 +41,6 @@ public:
     enum THREAD_CANCELATION {
         ISCANCELED = 1, NOTCANCELED = 0
     };
-
     void setProcess(UserProcess *process);
 
     size_t getTid() const;
@@ -135,6 +134,7 @@ public:
     UserThread *waited_by_ = nullptr;
 
     Condition join_condition_;
+    Condition swap_condition_;
     ustl::vector<size_t> virtual_pages_;
 
     void makeAsynchronousCancel();

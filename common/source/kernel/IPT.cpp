@@ -1,6 +1,3 @@
-//
-// Created by amar on 12/10/23.
-//
 
 #include "../../include/kernel/IPT.h"
 #include "types.h"
@@ -100,5 +97,23 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
     ipt_[page_nr] = sipt_.at(block_number);
     sipt_.erase(block_number);
     return 0;
+}
+
+IPTEntry* IPT::GetIPT(size_t ppn)
+{
+    for(auto i : ipt_)
+    {
+        if(i.first == ppn)
+        {
+            return i.second;
+        }
+        else
+        {
+            continue;
+        }
+
+    }
+
+    return nullptr;
 }
 
