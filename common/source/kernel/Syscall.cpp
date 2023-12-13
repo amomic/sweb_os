@@ -13,6 +13,7 @@
 #include "ArchMemory.h"
 #include "ArchThreads.h"
 #include "IPT.h"
+#include "PageManager.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
 {
@@ -99,6 +100,12 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             break;
         case sc_waitpid:
             return_value = waitpid(arg1, reinterpret_cast<int *>(arg2), arg2);
+            break;
+        case sc_brk:
+            return_value = brk(arg1);
+            break;
+        case sc_sbrk:
+            return_value = sbrk(arg1);
             break;
         default:
             return_value = -1;
@@ -479,10 +486,69 @@ size_t Syscall::thread_sleep(size_t seconds)
     debug(SYSCALL, "Syscall::Sleep for %zu seconds\n", seconds);
 
     uint64 wake_up_at_tcs = ArchThreads::rdtsc() + seconds * 1000000 * Scheduler::instance()->clock_f;
+    Scheduler::instance()->sleep_lock_.acquire();
     Scheduler::instance()->sleeping_threads_.push_back({currentThread, wake_up_at_tcs});
+    Scheduler::instance()->sleep_lock_.release();
+
     Scheduler::instance()->yield();
+    Scheduler::instance()->sleep_lock_.acquire();
     Scheduler::instance()->sleeping_threads_.erase({currentThread});
+    Scheduler::instance()->sleep_lock_.acquire();
 
     return 0;
 }
+
+size_t Syscall::brk(size_t end_data_segment)
+{
+    debug(SYSCALL, "SYSCALL::brk-> param: %p \n", (void *) end_data_segment);
+    // check for regions
+    if (end_data_segment >= USER_BREAK)
+        return -1;
+    if (currentThread->loader_->start_break_ > end_data_segment)
+        return -1;
+
+    currentThread->loader_->heap_mutex_.acquire();
+    ArchThreads::atomic_set(currentThread->loader_->current_break_, end_data_segment);
+    // unmap sve iznad
+    for (size_t iter = 0; iter < currentThread->loader_->vpns_of_heap_.size(); iter++)
+    {
+        if (currentThread->loader_->vpns_of_heap_.at(iter) > end_data_segment)
+        {
+            debug(SYSCALL, "SYSCALL::brk in if! \n");
+
+            currentThread->loader_->arch_memory_.arch_mem_lock.acquire();
+            currentThread->loader_->arch_memory_.unmapPage(currentThread->loader_->vpns_of_heap_.at(iter));
+            currentThread->loader_->arch_memory_.arch_mem_lock.release();
+            currentThread->loader_->vpns_of_heap_.erase(currentThread->loader_->vpns_of_heap_.begin() + iter);
+        }
+    }
+    currentThread->loader_->heap_mutex_.release();
+    debug(SYSCALL, "SYSCALL::brk SUCCESS! \n");
+    return 0;
+}
+
+size_t Syscall::sbrk(size_t increment)
+{
+    debug(SYSCALL, "SYSCALL::sbrk-> param: %zu \n", increment);
+
+    if (increment == 0)
+        return ArchThreads::atomic_add(currentThread->loader_->current_break_, 0);
+
+    currentThread->loader_->heap_mutex_.acquire();
+    // premalo
+    if (currentThread->loader_->start_break_ > currentThread->loader_->current_break_ + increment)
+    {
+        currentThread->loader_->heap_mutex_.release();
+        return -1;
+    }
+    size_t old_break = currentThread->loader_->current_break_;
+    currentThread->loader_->heap_mutex_.release();
+    brk(currentThread->loader_->current_break_ + increment);
+
+    debug(SYSCALL, "SYSCALL::sbrk SUCCESS! \n");
+
+    return old_break;
+}
+
+
 

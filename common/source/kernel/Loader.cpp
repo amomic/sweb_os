@@ -10,12 +10,15 @@
 #include "FileDescriptor.h"
 #include "Scheduler.h"
 
-Loader::Loader(ssize_t fd) : fd_(fd), hdr_(0), phdrs_(), program_binary_lock_("Loader::program_binary_lock_"), userspace_debug_info_(0)
+Loader::Loader(ssize_t fd) :
+        heap_mutex_("Heap lock"),
+        fd_(fd), hdr_(0), phdrs_(), program_binary_lock_("Loader::program_binary_lock_"), userspace_debug_info_(0)
 {
 }
 
 Loader::Loader(Loader& loader, ssize_t fd) :
         arch_memory_(loader.arch_memory_),
+        heap_mutex_("Heap lock"),
         fd_(fd),
         hdr_(0),
         phdrs_(),
@@ -307,5 +310,17 @@ bool Loader::prepareHeaders()
       }
     }
   }
+    size_t offset = 0;
+    size_t address = 0;
+    for(auto iter = phdrs_.begin(); iter != phdrs_.end(); iter++)
+    {
+        if(iter->p_vaddr > address)
+            address = iter->p_vaddr;
+        if(iter->p_memsz > offset)
+            offset = iter->p_memsz;
+    }
+
+    start_break_ = address+offset;
+    current_break_ = start_break_;
   return phdrs_.size() > 0;
 }

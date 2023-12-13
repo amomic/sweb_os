@@ -28,4 +28,7 @@
 #define sc_clock 1000
 #define sc_sleep 1001
 
+#define sc_sbrk 4001
+#define sc_brk 4002
+
 
