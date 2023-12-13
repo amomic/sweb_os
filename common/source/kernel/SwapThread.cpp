@@ -115,8 +115,16 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
         debug(SWAP_THREAD, "Swap Out vpn : %zx. \n", inv_entry->virt_page_num_);
         ArchMemoryMapping m = inv_entry->arch_mem_->resolveMapping(inv_entry->virt_page_num_);
-        m.pt[m.pti].present = 0;
-        m.pt[m.pti].swapped = 1;
+        PageTableEntry* PT_entry = (PageTableEntry*)inv_entry->arch_mem_->getIdentAddressOfPPN(m.pt_ppn);
+        if(inv_entry->virt_page_num_ == 0x800103f / PAGE_SIZE)
+        {
+            debug(SWAP_THREAD, "Swap Out vpn : %zx. \n", inv_entry->virt_page_num_);
+            debug(SWAP_THREAD, "ResolvedMapping -> %zu == %zu <- evicted page \n", (size_t)m.pt[m.pti].page_ppn,
+                  rand_ppn);
+            //assert(0 && "Why\n");
+        }
+        PT_entry[m.pti].present = 0;
+        PT_entry[m.pti].swapped = 1;
         debug(SWAP_THREAD, "ResolvedMapping -> %zu == %zu <- evicted page \n", (size_t)m.pt[m.pti].page_ppn,
               rand_ppn);
         assert(m.pt[m.pti].page_ppn == rand_ppn&& "This should be the ppn we are swapping. \n");
@@ -194,7 +202,7 @@ size_t SwapThread::randomPRA()
         ppn_to_evict = ((ArchThreads::rdtsc() >> 1) % total_number_of_pages / 2) + total_number_of_pages / 2;
 
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
-        if(entry == IPT::instance()->ipt_.end())
+        if(entry == IPT::instance()->ipt_.end() || entry->second->virt_page_num_ < (0x10000f1f / PAGE_SIZE) || entry->second->virt_page_num_ > (STACK_POS/PAGE_SIZE) )
         {
             continue;
         } else {
