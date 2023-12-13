@@ -204,6 +204,7 @@ size_t SwapThread::randomPRA()
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
         if(entry == IPT::instance()->ipt_.end() || entry->second->virt_page_num_ < 0x9000f1f / PAGE_SIZE || entry->second->virt_page_num_ > STACK_POS/PAGE_SIZE )
         {
+            debug(SWAP_THREAD, "\n uso u if \n");
             continue;
         } else {
             ppn_to_evict_found = 1;
