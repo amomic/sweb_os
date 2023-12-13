@@ -113,8 +113,8 @@ size_t SwapThread::SwapOut(SwapRequest* request)
         size_t size = device_->writeData(disk_off, PAGE_SIZE,reinterpret_cast<char*>(ArchMemory::getIdentAddressOfPPN(m.pt[m.pti].page_ppn)));
         assert(size);
         m.pt[m.pti].page_ppn = (uint64)disk_off;
-        IPT::swapOutRef(request->ppn_,found);// Push back the pointer
-        ipt_[rand_ppn] = nullptr;
+        IPT::instance()->swapOutRef(request->ppn_,found);// Push back the pointer
+        IPT::instance()->ipt_[rand_ppn] = nullptr;
         debug(SWAP_THREAD, "Swaped out \n");
         return request->ppn_;// set it to null, it is swapped
     }

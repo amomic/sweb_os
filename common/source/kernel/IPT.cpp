@@ -1,18 +1,16 @@
-
 #include "../../include/kernel/IPT.h"
 #include "types.h"
 #include "Scheduler.h"
 #include "Thread.h"
 #include "debug.h"
 #include "PageManager.h"
-
+#include "IPTEntry.h"
+IPT iptin_;
 IPT *IPT::instance_ = nullptr;
 
 IPT *IPT::instance() {
-    if (instance_ == nullptr)
-    {
-        instance_ = new IPT();
-    }
+    if(unlikely(!instance_))
+        new (&iptin_) IPT();
     return instance_;
 }
 IPT::IPT() : ipt_lock_("ipt_lock_") {
@@ -24,12 +22,11 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
         //ipt_[i] = new IPTEntry(,vpn,type,1);
 
     }
-
+    instance_ = this;
     debug(A_MEMORY, "IPT initialisation done \n");
 }
 
-ustl::map<size_t, IPTEntry*> ipt_;
-ustl::map<size_t, IPTEntry*> sipt_;
+
 
 [[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type)
 {
@@ -41,7 +38,8 @@ ustl::map<size_t, IPTEntry*> sipt_;
     {
         debug(A_MEMORY, "u ifu\n");
         //ipt_[ppn] = new IPTEntry;
-        ipt_[ppn] = new IPTEntry(memory,vpn,type,1);
+        auto entr = new IPTEntry(memory,vpn,type,1);
+        ipt_.insert(ustl::pair<size_t, IPTEntry*>(ppn,entr));
         debug(A_MEMORY, "poslije new iptentry\n");
     }
     debug(A_MEMORY, "poslije ifa\n");
@@ -65,7 +63,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
     assert(!ipt_.at(ppn)->references_list_.empty() && "IPT empty!");
 
-   ipt_.at(ppn)->references_list_.remove(memory);
+    ipt_.at(ppn)->references_list_.remove(memory);
 
 }
 
@@ -132,4 +130,3 @@ IPTEntry* IPT::GetIPT(size_t ppn)
 
     return nullptr;
 }
-
