@@ -186,11 +186,11 @@ bool ArchMemory::unmapPage(uint64 virtual_page)
     m.pt[m.pti].present = 0;
     m.pt[m.pti].cow = 0;
 
-    IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
 
     if(IPT::instance()->getRefCount(m.pt[m.pti].page_ppn) == 0)
     {
         PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
+        IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
     }
 
     //PageManager::instance()->freePPN(m.page_ppn);

@@ -43,7 +43,7 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
         debug(A_MEMORY, "poslije new iptentry\n");
     }
     debug(A_MEMORY, "poslije ifa\n");
-    //ipt_[ppn]->references_list_.push_back(memory);
+    ipt_[ppn]->references_list_.push_back(memory);
     ipt_[ppn]->arch_mem_ = memory;
     ipt_[ppn]->virt_page_num_ = vpn;
     ipt_[ppn]->type_ = type;
