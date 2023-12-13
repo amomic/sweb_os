@@ -108,12 +108,26 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             IPT::instance()->ipt_lock_.release();
 
             debug(PAGEFAULT, "[COW] Cow pagefault handled!\n");
+            for(auto page : pages)
+            {
+                if(page.second == false) {
+                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                    PageManager::instance()->freePPN(page.first);
+                }
+            }
             return;
+
         }
 
 //----------------------------------------------------------------------------------------------------------------------
         debug(USERPROCESS, "%18zx\n", address);
-
+        for(auto page : pages)
+        {
+            if(page.second == false) {
+                debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                PageManager::instance()->freePPN(page.first);
+            }
+        }
         if (address > STACK_POS)
         {
             parent_->getProcess()->arch_mem_lock_.release();
@@ -155,7 +169,13 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
   {
     parent_->getProcess()->arch_mem_lock_.release();
     IPT::instance()->ipt_lock_.release();
-
+      for(auto page : pages)
+      {
+          if(page.second == false) {
+              debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+              PageManager::instance()->freePPN(page.first);
+          }
+      }
     // the page-fault seems to be faulty, print out the thread stack traces
     ArchThreads::printThreadRegisters(currentThread, true);
     currentThread->printBacktrace(true);

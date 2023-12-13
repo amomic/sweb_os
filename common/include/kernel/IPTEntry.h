@@ -1,3 +1,6 @@
+//
+// Created by samo on 13.12.23.
+//
 #pragma once
 
 #include "types.h"
@@ -14,7 +17,7 @@ class ArchMemory;
 class IPTEntry {
 
 
-public:
+    public:
     ustl::list<ArchMemory*> references_list_;
     ArchMemory* arch_mem_;
     size_t virt_page_num_;

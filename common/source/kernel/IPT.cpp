@@ -1,3 +1,4 @@
+
 #include "../../include/kernel/IPT.h"
 #include "types.h"
 #include "Scheduler.h"
@@ -61,9 +62,18 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 {
     assert(ipt_.find(ppn) != ipt_.end() && "IPT does not have that PPN!");
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
+
     assert(!ipt_.at(ppn)->references_list_.empty() && "IPT empty!");
 
-    ipt_.at(ppn)->references_list_.remove(memory);
+    if(ipt_.at(ppn)->references_list_.size() == 1)
+    {
+        //delete ipt_[ppn];
+        ipt_.erase(ppn);
+    }
+    else
+    {
+        ipt_.at(ppn)->references_list_.remove(memory);
+    }
 
 }
 
@@ -101,8 +111,10 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 
 [[maybe_unused]] size_t IPT::swapOutRef(size_t ppn[[maybe_unused]], size_t block_number[[maybe_unused]])
 {
+    //ScopeLock lock(ipt_lock_);
+    debug(SWAP_THREAD, "PPN THATS SWAPPED IS %zu\n", ppn);
     sipt_[block_number] = ipt_.at(ppn);
-    ipt_.erase(ppn);
+    deleteReference(ppn, sipt_.at(block_number)->arch_mem_);
     return 0;
 }
 
@@ -130,3 +142,4 @@ IPTEntry* IPT::GetIPT(size_t ppn)
 
     return nullptr;
 }
+

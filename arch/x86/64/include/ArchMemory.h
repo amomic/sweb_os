@@ -5,6 +5,7 @@
 #include "paging-definitions.h"
 #include "Mutex.h"
 #include "umap.h"
+#include"IPTEntry.h"
 
 struct ArchMemoryMapping
 {

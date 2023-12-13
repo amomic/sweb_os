@@ -34,6 +34,7 @@ Scheduler::Scheduler()
     ticks_ = 0;
     addNewThread(&cleanup_thread_);
     addNewThread(&idle_thread_);
+    addNewThread(&swap_thread_);
 }
 
 void Scheduler::schedule()

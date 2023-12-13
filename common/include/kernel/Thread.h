@@ -80,7 +80,7 @@ class Thread
      * Tells the scheduler if this thread is ready for scheduling
      * @return true if ready for scheduling
      */
-    bool schedulable();
+    virtual bool schedulable() ;
 
     void setTID(size_t tid);
   
@@ -116,6 +116,8 @@ class Thread
      */
     Lock* holding_lock_list_;
 
+    ThreadState getState() const;
+
   private:
     Thread(Thread const &src);
     Thread &operator=(Thread const &src);
@@ -127,7 +129,6 @@ class Thread
     Terminal* my_terminal_;
 
   protected:
-    ThreadState getState() const;
 
     FileSystemInfo* working_dir_;
 

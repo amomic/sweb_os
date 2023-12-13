@@ -4,6 +4,7 @@
 #include <ulist.h>
 #include "IdleThread.h"
 #include "CleanupThread.h"
+#include "SwapThread.h"
 #include "umap.h"
 
 class Thread;
@@ -51,10 +52,14 @@ public:
      */
     void schedule();
 
+    SwapThread swap_thread_;
+
 protected:
     friend class IdleThread;
 
     friend class CleanupThread;
+
+    friend class SwapThread;
 
     void cleanupDeadThreads();
 
@@ -85,6 +90,7 @@ private:
 
     IdleThread idle_thread_;
     CleanupThread cleanup_thread_;
+
 public:
     void calculateClockFrequency();
 
