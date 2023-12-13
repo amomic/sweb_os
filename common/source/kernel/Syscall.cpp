@@ -12,6 +12,7 @@
 #include "Loader.h"
 #include "ArchMemory.h"
 #include "ArchThreads.h"
+#include "IPT.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
 {
@@ -287,9 +288,11 @@ void Syscall::pthread_exit([[maybe_unused]]void *value)
     current_thread->getProcess()->threads_lock_.release();
     debug(SYSCALL, "line before kill in pexit");
 
+    IPT::instance()->ipt_lock_.acquire();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
     current_thread->getProcess()->unmapPage();
     current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
+    IPT::instance()->ipt_lock_.release();
 
     current_thread->kill();
 }

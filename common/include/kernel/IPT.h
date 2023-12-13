@@ -7,26 +7,37 @@
 #include "Mutex.h"
 #include "Loader.h"
 #include "types.h"
+#include "debug.h"
 
 enum PageType {PAGE[[maybe_unused]], PAGE_TABLE[[maybe_unused]], PAGE_DIR[[maybe_unused]], PDPT [[maybe_unused]]};
 
-struct IPTEntry {
+
+typedef struct IPTEntry {
     ustl::list<ArchMemory*> references_list_;
+    ArchMemory* arch_mem_;
     size_t virt_page_num_;
     PageType type_;
     uint64 swap_bit :1;
-};
+
+    IPTEntry(ArchMemory* mem, size_t vpn, PageType type, uint64 swap):
+        references_list_(0),arch_mem_(mem), virt_page_num_(vpn), type_(type), swap_bit(swap){
+        debug(A_MEMORY, "u iptentry bla \n");
+    };
+} IPTEntry;
+
+
 
 class IPT {
 private:
     static IPT *instance_;
+    IPT();
 
 public:
     static IPT *instance();
 
-    static Mutex ipt_lock_;
+    Mutex ipt_lock_;
 
-    [[maybe_unused]] static void addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type);
+    [[maybe_unused]] void addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type);
 
     [[maybe_unused]] static void addSwappedRef(size_t block_number, ArchMemory *memory);
 

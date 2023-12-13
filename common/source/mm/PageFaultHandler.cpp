@@ -88,7 +88,11 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         pages[pos] = false;
     }
 
-    IPT::ipt_lock_.acquire();
+    if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+    {
+        IPT::instance()->ipt_lock_.acquire();
+    }
+
     parent_->getProcess()->arch_mem_lock_.acquire();
 
     if (checkPageFaultIsValid(address, user, present, switch_to_us, writing))
@@ -101,7 +105,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             currentThread->loader_->arch_memory_.cowPageCopy(address, &pages);
 
             parent_->getProcess()->arch_mem_lock_.release();
-            IPT::ipt_lock_.release();
+            IPT::instance()->ipt_lock_.release();
 
             debug(PAGEFAULT, "[COW] Cow pagefault handled!\n");
             return;
@@ -112,40 +116,45 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
         if (address > STACK_POS)
         {
+            parent_->getProcess()->arch_mem_lock_.release();
+            IPT::instance()->ipt_lock_.release();
             if (((UserThread *) currentThread)->process_->CheckStack(address))
             {
                 debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
-                parent_->getProcess()->arch_mem_lock_.release();
-                IPT::ipt_lock_.release();
+
                 return;
             } else
             {
+                parent_->getProcess()->arch_mem_lock_.acquire();
+                IPT::instance()->ipt_lock_.acquire();
                 // the page-fault seems to be faulty, print out the thread stack traces
                 ArchThreads::printThreadRegisters(currentThread, true);
                 currentThread->printBacktrace(true);
                 if (currentThread->loader_)
                 {
                     parent_->getProcess()->arch_mem_lock_.release();
-                    IPT::ipt_lock_.release();
+                    IPT::instance()->ipt_lock_.release();
                     Syscall::exit(9999);
                 } else {
                     parent_->getProcess()->arch_mem_lock_.release();
-                    IPT::ipt_lock_.release();
+                    IPT::instance()->ipt_lock_.release();
                     currentThread->kill();
                 }
             }
         } else
         {
+            parent_->getProcess()->arch_mem_lock_.release();
+            IPT::instance()->ipt_lock_.release();
+
             currentThread->loader_->loadPage(address);
 
-            parent_->getProcess()->arch_mem_lock_.release();
-            IPT::ipt_lock_.release();
+
         }
   }
   else
   {
     parent_->getProcess()->arch_mem_lock_.release();
-    IPT::ipt_lock_.release();
+    IPT::instance()->ipt_lock_.release();
 
     // the page-fault seems to be faulty, print out the thread stack traces
     ArchThreads::printThreadRegisters(currentThread, true);
