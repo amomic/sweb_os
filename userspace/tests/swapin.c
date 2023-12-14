@@ -1,32 +1,31 @@
+#include "pthread.h"
 #include "stdio.h"
 #include "assert.h"
-#define SIZE 1024ULL * 1024ULL
-int array[SIZE] = {0};
+#include "unistd.h"
+#define WAITING_TIME 1024*1024*100
+#define NUM_THREADS 100
+#define MB 1024ULL * 1024ULL
 
-int main(int argc, char *argv[])
+intptr_t global[7*MB];
+
+int main()
 {
-    printf("test started");
-    int a = 0;
 
-    for (int i = 0; i < SIZE; i+=1024)
+    for(size_t i = 0; i < 7*MB; ++i)
     {
-        a = array[i];
-    }
-    for (int i = 0; i < SIZE; i+=1024)
-    {
-        a = array[i];
+        if(!(i % 4096))
+        {
+            global[i] = (intptr_t)&global[i];
+        }
     }
 
-    for (int i = 0; i < SIZE; i+=1024)
+    for(size_t i = 0; i < 7*MB; ++i)
     {
-        printf("%d ", array[i]);
+        if(!(i % 4096))
+        {
+            assert(global[i] == (intptr_t)&global[i] && "swapIn failed");
+        }
     }
-    for (int i = 0; i < SIZE; i+=1024)
-    {
-        printf("%d ", array[i]);
-    }
-
-    printf("test finished with a= %d\n",a);
 
     return 0;
 }
