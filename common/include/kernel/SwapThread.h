@@ -25,7 +25,7 @@ public:
     BDVirtualDevice *device_;
     size_t block_;
     size_t SwapOut(SwapRequest* request);
-    void SwapIn();
+    size_t SwapIn(SwapRequest* request);
     ustl::queue <SwapRequest*> swap_request_map_;
     Mutex swap_lock_;
     Condition swap_wait;
@@ -39,6 +39,9 @@ public:
     Mutex request_lock_;
     Condition request_cond_;
 
+    size_t WaitForSwapIn(size_t vpn);
+    Mutex disc_alloc_lock_;
+
 private:
     static SwapThread *instance_;
 
@@ -49,6 +52,7 @@ struct SwapRequest{
     size_t ppn_;
     size_t vpn_;
     size_t block_number_;
+    UserProcess *user_process;
     bool is_done = false;
 
     void initDevice(){
