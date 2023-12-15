@@ -136,7 +136,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 }
 
 
-size_t SwapThread::SwapIn(SwapRequest *request)
+[[maybe_unused]] size_t SwapThread::SwapIn(SwapRequest *request)
 {
     size_t new_page = PageManager::instance()->allocPPN();
 
@@ -258,8 +258,7 @@ size_t SwapThread::randomPRA() {
         ppn_to_evict = ((ArchThreads::rdtsc() >> 1) % total_number_of_pages / 2) + total_number_of_pages / 2;
 
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
-        if (entry == IPT::instance()->ipt_.end() || entry->second->virt_page_num_ < 0x9000f1f / PAGE_SIZE ||
-            entry->second->virt_page_num_ > STACK_POS / PAGE_SIZE) {
+        if (entry == IPT::instance()->ipt_.end()) {
             debug(SWAP_THREAD, "\n random in if  \n");
             continue;
         } else {
