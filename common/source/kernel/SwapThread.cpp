@@ -113,7 +113,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
         {
             debug(SWAP_THREAD, "Swap Out vpn : %zx. \n", inv_entry->virt_page_num_);
             debug(SWAP_THREAD, "ResolvedMapping ppn is:  %zu, our ppn is  %zu  \n", (size_t)m.pt[m.pti].page_ppn,
-                  rand_ppn)
+                  rand_ppn);
             //assert(0 && "Why\n");
         }
         PT_entry[m.pti].present = 0;
