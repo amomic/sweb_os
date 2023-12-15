@@ -1,6 +1,3 @@
-//
-// Created by samo on 13.12.23.
-//
 #pragma once
 
 #include "types.h"

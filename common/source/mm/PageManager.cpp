@@ -215,7 +215,6 @@ uint32 PageManager::allocPPN(uint32 page_size)
   {
      found = SwapThread::instance()->addCond(found);
       memset((void*)ArchMemory::getIdentAddressOfPPN(found), 0xFF, PAGE_SIZE);
-    return found;
   }
 
   const char* page_ident_addr = (const char*)ArchMemory::getIdentAddressOfPPN(found);

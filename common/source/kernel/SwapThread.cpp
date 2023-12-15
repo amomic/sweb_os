@@ -83,30 +83,24 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     debug(SWAP_THREAD, "after pra\n \n");
     uint32 found = 0;
     debug(SWAP_THREAD, "after block num\n \n");
-    size_t number_of_free_blocks_ = number_of_blocks_;
+    [[maybe_unused]]size_t number_of_free_blocks_ = number_of_blocks_;
     //kprintf("%zu",number_of_blocks_);
 
     debug(SWAP_THREAD, "swap out1\n \n");
-    for(p = lowest_unreserved_page_; !found && p < number_of_blocks_; ++p)
+    for (p = lowest_unreserved_page_; !found && (p < number_of_blocks_); ++p)
     {
-        if(!bitmap_->getBit(p))
-        {
-            bitmap_->setBit(p);
+        if (reserveBlock(p,1))
             found = p;
-        }
     }
-    while(lowest_unreserved_page_ < number_of_blocks_ &&
-          bitmap_->getBit(lowest_unreserved_page_))
-    {
-        lowest_unreserved_page_++;
-    }
+    while ((lowest_unreserved_page_ < number_of_blocks_) && bitmap_->getBit(lowest_unreserved_page_))
+        ++lowest_unreserved_page_;
 
     debug(SWAP_THREAD, "swap out2\n \n");
 
     assert(found != 0 && "ERROR: OUT OF DISK MEMORY. \n");
     number_of_free_blocks_--; // One Disk Page Number allocated, reducing
 
-    size_t disk_off =  found;
+    size_t block =  found;
 
 
     auto inv_entry = IPT::instance()->GetIPT(rand_ppn);
@@ -128,14 +122,13 @@ size_t SwapThread::SwapOut(SwapRequest* request)
         debug(SWAP_THREAD, "ResolvedMapping -> %zu == %zu <- evicted page \n", (size_t)m.pt[m.pti].page_ppn,
               rand_ppn);
         assert(m.pt[m.pti].page_ppn == rand_ppn&& "This should be the ppn we are swapping. \n");
-        size_t size = device_->writeData(disk_off * PAGE_SIZE, PAGE_SIZE,reinterpret_cast<char*>(ArchMemory::getIdentAddressOfPPN(m.pt[m.pti].page_ppn)));
+        size_t size = device_->writeData(block * PAGE_SIZE, PAGE_SIZE,reinterpret_cast<char*>(ArchMemory::getIdentAddressOfPPN(m.pt[m.pti].page_ppn)));
         assert(size);
-        m.pt[m.pti].page_ppn = (uint64)disk_off;
-        IPT::instance()->swapOutRef(rand_ppn,found);// Push back the pointer
-        //IPT::instance()->ipt_[rand_ppn] = nullptr;
+        m.pt[m.pti].page_ppn = (uint64)block;
+        IPT::instance()->swapOutRef(rand_ppn,found);
         request->ppn_ = rand_ppn;
         debug(SWAP_THREAD, "Swaped out %zu \n", request->ppn_);
-        return request->ppn_;// set it to null, it is swapped
+        return request->ppn_;
     }
     else
     {
@@ -188,22 +181,20 @@ bool SwapThread::schedulable() {
     //return (getState() == Running);
 }
 
-size_t SwapThread::randomPRA()
-{
+size_t SwapThread::randomPRA() {
 
     debug(SWAP_THREAD, "randompra\n \n");
     size_t ppn_to_evict_found = 0;
     size_t ppn_to_evict = 0;
     size_t total_number_of_pages = PageManager::instance()->getTotalNumPages();
 
-    while(!ppn_to_evict_found)
-    {
+    while (!ppn_to_evict_found) {
         debug(SWAP_THREAD, "random1\n \n");
         ppn_to_evict = ((ArchThreads::rdtsc() >> 1) % total_number_of_pages / 2) + total_number_of_pages / 2;
 
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
-        if(entry == IPT::instance()->ipt_.end() || entry->second->virt_page_num_ < 0x9000f1f / PAGE_SIZE || entry->second->virt_page_num_ > STACK_POS/PAGE_SIZE )
-        {
+        if (entry == IPT::instance()->ipt_.end() || entry->second->virt_page_num_ < 0x9000f1f / PAGE_SIZE ||
+            entry->second->virt_page_num_ > STACK_POS / PAGE_SIZE) {
             debug(SWAP_THREAD, "\n uso u if \n");
             continue;
         } else {
@@ -215,4 +206,18 @@ size_t SwapThread::randomPRA()
 
     debug(SWAP_THREAD, "return");
     return ppn_to_evict;
+}
+
+bool SwapThread::reserveBlock(uint32 block,uint32 num)
+{
+    assert(IPT::instance()->ipt_lock_.heldBy() == currentThread);
+    if (block < number_of_blocks_ && !bitmap_->getBit(block))
+    {
+        if (num == 1 || reserveBlock(block+ 1, num - 1))
+        {
+            bitmap_->setBit(block);
+            return true;
+        }
+    }
+    return false;
 }

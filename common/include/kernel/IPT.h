@@ -8,10 +8,6 @@
 #include "debug.h"
 #include "IPTEntry.h"
 
-
-
-
-
 class IPTEntry;
 
 class IPT {

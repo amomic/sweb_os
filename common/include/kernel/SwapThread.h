@@ -43,6 +43,7 @@ private:
     static SwapThread *instance_;
 
 
+    bool reserveBlock(uint32 block, uint32 num);
 };
 struct SwapRequest{
     size_t swap_type_;
