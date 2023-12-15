@@ -259,7 +259,7 @@ bool SwapThread::schedulable() {
 
 size_t SwapThread::randomPRA()
 {
-    debug(SWAP_THREAD, "randompra\n \n");
+    debug(SWAP_THREAD, "random pra\n \n");
     size_t ppn_to_evict_found = 0;
     size_t ppn_to_evict = 0;
     size_t total_number_of_pages = PageManager::instance()->getTotalNumPages();
