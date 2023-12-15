@@ -15,7 +15,7 @@ int main()
         }
     }
 
-    printf("Done\n");
+    printf("\nDone\n");
 
 
     return 0;

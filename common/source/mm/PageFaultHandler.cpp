@@ -101,7 +101,9 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         if(m.pt && m.pt[m.pti].swapped)
         {
             debug(SWAP_THREAD, "VPN: %zx \n",address );
-            assert(0 && "You need to swap this in \n");
+            //assert(0 && "You need to swap this in \n");
+            SwapThread::instance()->WaitForSwapIn(address / PAGE_SIZE);
+            return;
         }
         //-----------------------------------------COW--------------------------------------------------------------------------
         if(currentThread->loader_->arch_memory_.isCowSet(address) && writing)

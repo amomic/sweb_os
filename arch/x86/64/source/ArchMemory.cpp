@@ -194,7 +194,6 @@ bool ArchMemory::unmapPage(uint64 virtual_page)
   }
   else if(IPT::instance()->ipt_.find(m.pt[m.pti].page_ppn) == IPT::instance()->ipt_.end()) {
       PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
-
   }
 
   //PageManager::instance()->freePPN(m.page_ppn);
