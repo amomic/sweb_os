@@ -128,6 +128,44 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         }
 
 //----------------------------------------------------------------------------------------------------------------------
+
+
+/*-------------------------------------------------------- HEAP ON DEMAND ----------------------------------------------*/
+        currentThread->loader_->heap_mutex_.acquire();
+//        parent_->getProcess()->arch_mem_lock_.acquire();
+
+
+        if ( address <= currentThread->loader_->current_break_ && address >= currentThread->loader_->start_break_)
+        {
+            size_t new_ppn = PageManager::instance()->allocPPN();
+            size_t vpn = address / PAGE_SIZE;
+            debug(PAGEFAULT, "Heap adress pagefault->%zx \n", address);
+            currentThread->loader_->vpns_of_heap_.push_back();
+            currentThread->loader_->heap_mutex_.release();
+
+            bool is_mapped = pUserThread->getProcess()->loader_->arch_memory_.mapPage(vpn, new_ppn, 1);
+
+//            currentThread->loader_->arch_memory_.arch_mem_lock.release();
+            parent_->getProcess()->arch_mem_lock_.release();
+
+            IPT::instance()->ipt_lock_.release();
+
+            if (!is_mapped) {
+                PageManager::instance()->freePPN(new_ppn);
+
+                debug(PAGEFAULT, "Page %zx already mapped.\n", vpn);
+            }
+            debug(PAGEFAULT, "Heap Address Page fault finished -> %18zx.\n", address);
+            return;
+        }
+        else{
+            currentThread->loader_->loadPage(address);
+
+        }
+        currentThread->loader_->heap_mutex_.release();
+
+/*-------------------------------------------------------- HEAP ON DEMAND END!! ----------------------------------------------*/
+
         debug(USERPROCESS, "%18zx\n", address);
         for(auto page : pages)
         {

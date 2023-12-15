@@ -28,7 +28,7 @@ Scheduler *Scheduler::instance()
     return instance_;
 }
 
-Scheduler::Scheduler()
+Scheduler::Scheduler() : sleep_lock_("Sleeping threads Lock")
 {
     block_scheduling_ = 0;
     ticks_ = 0;
@@ -51,13 +51,19 @@ void Scheduler::schedule()
     {
         if ((*it)->schedulable())
         {
+//            Scheduler::instance()->sleep_lock_.acquire();
             auto sleeping_entry = sleeping_threads_.find(*it);
             if (sleeping_entry != sleeping_threads_.end()) // Check if the thread is sleeping
             {
                 uint64 i = ArchThreads::rdtsc();
                 if (sleeping_entry->second > i)
+                {
+//                    Scheduler::instance()->sleep_lock_.release();
                     continue;
+                }
             }
+//            Scheduler::instance()->sleep_lock_.release();
+
             currentThread = *it;
             break;
         }

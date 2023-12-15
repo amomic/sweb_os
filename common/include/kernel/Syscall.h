@@ -35,5 +35,8 @@ class Syscall
 
     static size_t clock(void);
     static size_t thread_sleep(size_t seconds);
+
+    static size_t brk(size_t end_data_segment);
+    static size_t sbrk(size_t increment);
 };
 

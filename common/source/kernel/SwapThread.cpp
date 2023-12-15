@@ -62,7 +62,7 @@ void SwapThread::Run() {
 
         else if(request->swap_type_ == Thread::SWAP_TYPE::SWAP_IN)
         {
-                        swap_request_map_.pop();
+            swap_request_map_.pop();
             SwapIn(request);
             request->is_done = true;
             swap_wait.signal();

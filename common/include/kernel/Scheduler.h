@@ -6,6 +6,7 @@
 #include "CleanupThread.h"
 #include "SwapThread.h"
 #include "umap.h"
+#include "Mutex.h"
 
 class Thread;
 
@@ -18,6 +19,7 @@ class Lock;
 class Scheduler
 {
 public:
+    Mutex sleep_lock_;
     ustl::map<Thread *, uint64> sleeping_threads_ ;
 
     static Scheduler *instance();
