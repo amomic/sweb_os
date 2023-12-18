@@ -88,21 +88,31 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         pages[pos] = false;
     }
 
-    if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
-    {
-        IPT::instance()->ipt_lock_.acquire();
-    }
+    debug(SYSCALL, "1\n");
 
-    parent_->getProcess()->arch_mem_lock_.acquire();
 
+    debug(SYSCALL, "2\n");
     if (checkPageFaultIsValid(address, user, present, switch_to_us, writing))
     {
+        debug(SYSCALL, "3\n");
+
+        parent_->getProcess()->arch_mem_lock_.acquire();
         auto m = parent_->getProcess()->loader_->arch_memory_.resolveMapping(address / PAGE_SIZE);
+        parent_->getProcess()->arch_mem_lock_.release();
+
         if(m.pt && m.pt[m.pti].swapped)
         {
             debug(SWAP_THREAD, "VPN: %zx \n",address );
             //assert(0 && "You need to swap this in \n");
-            SwapThread::instance()->WaitForSwapIn(address / PAGE_SIZE);
+            SwapThread::instance()->WaitForSwapIn(address / PAGE_SIZE, m);
+
+            for(auto page : pages)
+            {
+                if(page.second == false) {
+                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                    PageManager::instance()->freePPN(page.first);
+                }
+            }
             return;
         }
         //-----------------------------------------COW--------------------------------------------------------------------------
@@ -112,8 +122,6 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
             currentThread->loader_->arch_memory_.cowPageCopy(address, &pages);
 
-            parent_->getProcess()->arch_mem_lock_.release();
-            IPT::instance()->ipt_lock_.release();
 
             debug(PAGEFAULT, "[COW] Cow pagefault handled!\n");
             for(auto page : pages)
@@ -132,9 +140,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
 /*-------------------------------------------------------- HEAP ON DEMAND ----------------------------------------------*/
         currentThread->loader_->heap_mutex_.acquire();
-//        parent_->getProcess()->arch_mem_lock_.acquire();
 
-
+        debug(SYSCALL, "4\n");
         if ( address <= currentThread->loader_->current_break_ && address >= currentThread->loader_->start_break_)
         {
             size_t new_ppn = PageManager::instance()->allocPPN();
@@ -146,9 +153,6 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             bool is_mapped = pUserThread->getProcess()->loader_->arch_memory_.mapPage(vpn, new_ppn, 1);
 
 //            currentThread->loader_->arch_memory_.arch_mem_lock.release();
-            parent_->getProcess()->arch_mem_lock_.release();
-
-            IPT::instance()->ipt_lock_.release();
 
             if (!is_mapped) {
                 PageManager::instance()->freePPN(new_ppn);
@@ -159,14 +163,18 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             return;
         }
         else{
+            debug(SYSCALL, "5\n");
+
             currentThread->loader_->loadPage(address);
 
         }
-        currentThread->loader_->heap_mutex_.release();
+        if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
+             currentThread->loader_->heap_mutex_.release();
 
 /*-------------------------------------------------------- HEAP ON DEMAND END!! ----------------------------------------------*/
 
         debug(USERPROCESS, "%18zx\n", address);
+        debug(SYSCALL, "6\n");
         for(auto page : pages)
         {
             if(page.second == false) {
@@ -174,10 +182,11 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
                 PageManager::instance()->freePPN(page.first);
             }
         }
+
         if (address > STACK_POS)
         {
-            parent_->getProcess()->arch_mem_lock_.release();
-            IPT::instance()->ipt_lock_.release();
+            debug(SYSCALL, "7\n");
+
             if (((UserThread *) currentThread)->process_->CheckStack(address))
             {
                 debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
@@ -185,27 +194,25 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
                 return;
             } else
             {
-                parent_->getProcess()->arch_mem_lock_.acquire();
-                IPT::instance()->ipt_lock_.acquire();
+                debug(SYSCALL, "8\n");
                 // the page-fault seems to be faulty, print out the thread stack traces
                 ArchThreads::printThreadRegisters(currentThread, true);
                 currentThread->printBacktrace(true);
                 if (currentThread->loader_)
                 {
-                    parent_->getProcess()->arch_mem_lock_.release();
-                    IPT::instance()->ipt_lock_.release();
+                    debug(SYSCALL, "9\n");
                     Syscall::exit(9999);
                 } else {
-                    parent_->getProcess()->arch_mem_lock_.release();
-                    IPT::instance()->ipt_lock_.release();
+                    debug(SYSCALL, "10\n");
                     currentThread->kill();
                 }
             }
         } else
         {
-            parent_->getProcess()->arch_mem_lock_.release();
-            IPT::instance()->ipt_lock_.release();
+            debug(SYSCALL, "11\n");
 
+            if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
+                currentThread->loader_->heap_mutex_.release();
             currentThread->loader_->loadPage(address);
 
 
@@ -213,8 +220,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
   }
   else
   {
-    parent_->getProcess()->arch_mem_lock_.release();
-    IPT::instance()->ipt_lock_.release();
+
+      debug(SYSCALL, "12\n");
       for(auto page : pages)
       {
           if(page.second == false) {
@@ -227,6 +234,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
     currentThread->printBacktrace(true);
     if (currentThread->loader_)
     {
+        debug(SYSCALL, "13\n");
         Syscall::exit(9999);
     }
     else
@@ -240,6 +248,12 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         Syscall::pthread_exit(reinterpret_cast<void *>(-1ULL));
     }
 
+
+    if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
+        currentThread->loader_->heap_mutex_.release();
+    if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+        IPT::instance()->ipt_lock_.release();
+    debug(SYSCALL,"okejjjjj");
     debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
 }
 
@@ -257,6 +271,10 @@ void PageFaultHandler::enterPageFault(size_t address, bool user,
 
   handlePageFault(address, user, present, writing, fetch, saved_switch_to_userspace);
 
+    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
+        currentThread->loader_->arch_memory_.arch_mem_lock.release();
+    if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
+        currentThread->loader_->heap_mutex_.release();
   ArchInterrupts::disableInterrupts();
   currentThread->switch_to_userspace_ = saved_switch_to_userspace;
   if (currentThread->switch_to_userspace_)

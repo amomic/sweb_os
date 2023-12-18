@@ -136,10 +136,10 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                                   debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
                                   debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
-
+                                  IPT::instance()->ipt_lock_.acquire();
                                   IPT::instance()->addReference(parent_pt[pti].page_ppn, this,((((((pml4i << 9) | pdpti) << 9) | pdi) << 9) | pti), PAGE);
-
-                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
+                                  IPT::instance()->ipt_lock_.release();
+;                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
                               else if(parent_pt[pti].swapped)
                               {
@@ -148,7 +148,9 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                                   child_pt[pti] = parent_pt[pti];
 
+                                  IPT::instance()->ipt_lock_.acquire();
                                   IPT::instance()->addSwappedRef(parent_pt[pti].page_ppn, this);
+                                  IPT::instance()->ipt_lock_.release();
                               }
                           }
                       }
@@ -180,6 +182,7 @@ bool ArchMemory::checkAndRemove(pointer map_ptr, uint64 index)
 bool ArchMemory::unmapPage(uint64 virtual_page)
 {
   ArchMemoryMapping m = resolveMapping(virtual_page);
+
 
   assert(m.page_ppn != 0 && m.page_size == PAGE_SIZE && m.pt[m.pti].present);
 
@@ -242,6 +245,7 @@ void ArchMemory::insert(pointer map_ptr, uint64 index, uint64 ppn, uint64 bzero,
 bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_access)
 {
   debug(A_MEMORY, "%zx %zx %zx %zx\n", page_map_level_4_, virtual_page, physical_page, user_access);
+    debug(SYSCALL, "18\n");
   ArchMemoryMapping m = resolveMapping(page_map_level_4_, virtual_page);
   assert((m.page_size == 0) || (m.page_size == PAGE_SIZE));
 
@@ -255,6 +259,8 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
 
   if (m.pdpt_ppn == 0)
   {
+
+      debug(SYSCALL, "18\n");
     m.pdpt_ppn = PageManager::instance()->allocPPN();
     insert<PageMapLevel4Entry>((pointer) m.pml4, m.pml4i, m.pdpt_ppn, 1, 0, 1, 1);
   }
@@ -281,9 +287,11 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
       //m = resolveMapping(page_map_level_4_, virtual_page);
 
       insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, physical_page, 0, 0, user_access, 1);
-//if(currentThread->getTID() != 0)
+      debug(SYSCALL, "19\n");
+      IPT::instance()->ipt_lock_.acquire();
     IPT::instance()->addReference(physical_page, this, virtual_page, PAGE);
-/*
+      IPT::instance()->ipt_lock_.release();
+    /*
     PageManager::instance()->cow_ref_map_lock.acquire();
     debug(A_MEMORY, "\n\n\n %zu \n\n\n", m.pt_ppn);
     PageManager::instance()->cow_ref_map.push_back(ustl::make_pair((uint32)physical_page, 1)); //TODO DELETE
@@ -297,8 +305,6 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
 ArchMemory::~ArchMemory()
 {
   assert(currentThread->kernel_registers_->cr3 != page_map_level_4_ * PAGE_SIZE && "thread deletes its own arch memory");
-
-  IPT::instance()->ipt_lock_.acquire();
   arch_mem_lock.acquire();
 
   PageMapLevel4Entry* pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
@@ -323,17 +329,23 @@ ArchMemory::~ArchMemory()
               {
                 if (pt[pti].present)
                 {
-
+                    IPT::instance()->ipt_lock_.acquire();
                     if(IPT::instance()->getRefCount(pt[pti].page_ppn) == 1)
                     {
                         PageManager::instance()->freePPN(pt[pti].page_ppn);
+
                         IPT::instance()->deleteReference(pt[pti].page_ppn, this);
+                        IPT::instance()->ipt_lock_.release();
+
 
                     }
                     else if(IPT::instance()->ipt_.find(pt[pti].page_ppn) == IPT::instance()->ipt_.end()) {
                         PageManager::instance()->freePPN(pt[pti].page_ppn);
+                        IPT::instance()->ipt_lock_.release();
 
-                    }
+                    }else
+                        IPT::instance()->ipt_lock_.release();
+
                 }
               }
               pd[pdi].pt.present = 0; //TODO DELETE THIS
@@ -376,7 +388,6 @@ ArchMemory::~ArchMemory()
   PageManager::instance()->freePPN(page_map_level_4_);
 
   arch_mem_lock.release();
-  IPT::instance()->ipt_lock_.release();
 }
 
 pointer ArchMemory::checkAddressValid(uint64 vaddress_to_check)
@@ -757,7 +768,11 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             alloc_pages->front().second = true;
 
             //Delete reference from IPT
+            arch_mem_lock.release();
+            IPT::instance()->ipt_lock_.acquire();
             IPT::instance()->deleteReference(mapping.pt[mapping.pti].page_ppn, this);
+            IPT::instance()->ipt_lock_.release();
+            arch_mem_lock.acquire();
 
             //Copy page
             memcpy((void*) getIdentAddressOfPPN(cow_copy_page), (void*)cow_page, PAGE_SIZE);
@@ -768,7 +783,10 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             mapping.pt[mapping.pti].page_ppn = cow_copy_page;
 
             //Add new reference
+            arch_mem_lock.release();
+            IPT::instance()->ipt_lock_.acquire();
             IPT::instance()->addReference(mapping.pt[mapping.pti].page_ppn, this, ((((((mapping.pml4i << 9) | mapping.pdpti) << 9) | mapping.pdi) << 9) | mapping.pti), PAGE);
+            IPT::instance()->ipt_lock_.release();
         }
     }
     arch_mem_lock.release();

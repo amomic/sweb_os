@@ -12,6 +12,7 @@
 #include "Scheduler.h"
 #include "Syscall.h"
 #include "UserThread.h"
+#include "IPT.h"
 
 UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 terminal_number) :
         threads_lock_("UserProcess::threads_lock_"), pages_lock_("UserProcess::pages_lock_"),
@@ -382,6 +383,27 @@ void UserProcess::unmapPage() {
     {
         size_t valid = currenThread->loader_->arch_memory_.checkAddressValid(it*PAGE_SIZE);
         if(valid)
+        {
+            auto m = loader_->arch_memory_.resolveMapping(it);
+
+            if(m.pt && m.pt[m.pti].swapped) {
+
+                if(IPT::instance()->ipt_lock_.isHeldBy(currentThread)) {
+                    IPT::instance()->ipt_lock_.release();
+                }
+                if(loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread)) {
+                    loader_->arch_memory_.arch_mem_lock.release();
+                }
+                SwapThread::instance()->WaitForSwapIn(it, m);
+                if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread)) {
+                    IPT::instance()->ipt_lock_.acquire();
+                }
+                if(!loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread)) {
+                    loader_->arch_memory_.arch_mem_lock.acquire();
+                }
+            }
+
+        }
             currentThread->loader_->arch_memory_.unmapPage(it);
     }
 

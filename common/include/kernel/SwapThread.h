@@ -40,7 +40,7 @@ public:
     Mutex request_lock_;
     Condition request_cond_;
 
-    size_t WaitForSwapIn(size_t vpn);
+    size_t WaitForSwapIn(size_t vpn, ArchMemoryMapping &m);
     Mutex disc_alloc_lock_;
 
 private:
@@ -57,7 +57,7 @@ struct SwapRequest{
     UserProcess *user_process;
     bool is_done = false;
 
-    void initDevice(){
+    [[maybe_unused]]void initDevice(){
 
         debug(SWAP_THREAD, "constructor of swap thread\n");
         SwapThread::instance()->pages_number_ = PageManager::instance()->getTotalNumPages();
@@ -77,8 +77,8 @@ struct SwapRequest{
         SwapThread::instance()->number_of_blocks_ = SwapThread::instance()->device_->getNumBlocks();
         debug(SWAP_THREAD, "ended the construction\n");
     }
-    SwapRequest(size_t sw_type, size_t ppn, size_t vpn, size_t block_number, [[maybe_unused]]Mutex* swap_lock_) :
-            swap_type_(sw_type), ppn_(ppn), vpn_(vpn), block_number_(block_number){
+    SwapRequest(size_t sw_type, size_t ppn, size_t vpn, size_t block_number, UserProcess* process ,[[maybe_unused]]Mutex* swap_lock_) :
+            swap_type_(sw_type), ppn_(ppn), vpn_(vpn), block_number_(block_number), user_process(process){
         if(SwapThread::instance()->device_ == nullptr)
             initDevice();
     };

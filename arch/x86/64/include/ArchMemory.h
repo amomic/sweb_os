@@ -36,7 +36,7 @@ class ArchMemory
     ~ArchMemory();
 
     ArchMemory(ArchMemory &parent);
-    Mutex arch_mem_lock;
+     Mutex arch_mem_lock;
 
 
     uint64 page_map_level_4_;

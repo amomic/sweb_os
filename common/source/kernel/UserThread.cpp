@@ -37,7 +37,6 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
 
     bool vpn_mapped = -1;
 
-    IPT::instance()->ipt_lock_.acquire();
 
 
     loader_->arch_memory_.arch_mem_lock.acquire();
@@ -52,7 +51,6 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     virtual_pages_.push_back(virtual_page);
     vpn_mapped = loader_->arch_memory_.mapPage(virtual_page, stack_ppn , 1);
     loader_->arch_memory_.arch_mem_lock.release();
-    IPT::instance()->ipt_lock_.release();
 
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");

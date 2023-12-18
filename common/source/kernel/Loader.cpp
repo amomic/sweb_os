@@ -9,6 +9,7 @@
 #include "File.h"
 #include "FileDescriptor.h"
 #include "Scheduler.h"
+#include "IPT.h"
 
 Loader::Loader(ssize_t fd) :
         heap_mutex_("Heap lock"),
@@ -43,8 +44,10 @@ void Loader::loadPage(pointer virtual_address)
   const pointer virt_page_end_addr = virt_page_start_addr + PAGE_SIZE;
   bool found_page_content = false;
   // get a new page for the mapping
+    debug(SYSCALL, "here\n");
   size_t ppn = PageManager::instance()->allocPPN();
 
+    debug(SYSCALL, "14\n");
   program_binary_lock_.acquire();
 
   // Iterate through all sections and load the ones intersecting into the page.
@@ -53,7 +56,7 @@ void Loader::loadPage(pointer virtual_address)
     if((*it).p_vaddr < virt_page_end_addr)
     {
       if((*it).p_vaddr + (*it).p_filesz > virt_page_start_addr)
-      {
+      { debug(SYSCALL, "15\n");
         const pointer  virt_start_addr = ustl::max(virt_page_start_addr, (*it).p_vaddr);
         const size_t   virt_offs_on_page = virt_start_addr - virt_page_start_addr;
         const l_off_t  bin_start_addr = (*it).p_offset + (virt_start_addr - (*it).p_vaddr);
@@ -71,6 +74,7 @@ void Loader::loadPage(pointer virtual_address)
       }
       else if((*it).p_vaddr + (*it).p_memsz > virt_page_start_addr)
       {
+          debug(SYSCALL, "16\n");
         found_page_content = true;
       }
     }
@@ -84,6 +88,7 @@ void Loader::loadPage(pointer virtual_address)
     Syscall::exit(666);
   }
 
+    debug(SYSCALL, "17\n");
   bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, ppn, true);
   if (!page_mapped)
   {
@@ -91,6 +96,12 @@ void Loader::loadPage(pointer virtual_address)
     PageManager::instance()->freePPN(ppn);
   }
   debug(LOADER, "Loader::loadPage: Load request for address %p has been successfully finished.\n", (void*)virtual_address);
+    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
+        currentThread->loader_->arch_memory_.arch_mem_lock.release();
+    if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
+        currentThread->loader_->heap_mutex_.release();
+    if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+        IPT::instance()->ipt_lock_.release();
 }
 
 bool Loader::readFromBinary (char* buffer, l_off_t position, size_t length)

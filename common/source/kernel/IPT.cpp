@@ -31,8 +31,8 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
 
 [[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type)
 {
-    //assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
-    //assert(ppn <= PageManager::instance()->getTotalNumPages());
+  //  assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
+    assert(ppn <= PageManager::instance()->getTotalNumPages());
 
     debug(A_MEMORY, "prije ifa\n");
     if(ipt_.find(ppn) == ipt_.end())
