@@ -403,8 +403,8 @@ void UserProcess::unmapPage() {
                 }
             }
 
-        }
             currentThread->loader_->arch_memory_.unmapPage(it);
+        }
     }
 
 }

@@ -162,12 +162,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             debug(PAGEFAULT, "Heap Address Page fault finished -> %18zx.\n", address);
             return;
         }
-        else{
-            debug(SYSCALL, "5\n");
 
-            currentThread->loader_->loadPage(address);
-
-        }
         if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
              currentThread->loader_->heap_mutex_.release();
 
