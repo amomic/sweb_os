@@ -1,38 +1,31 @@
-#include "stdlib.h"
+#include "pthread.h"
 #include "stdio.h"
 #include "assert.h"
-#include <time.h>
+#include "unistd.h"
+#define WAITING_TIME 1024*1024*100
+#define NUM_THREADS 100
+#define MB 1024ULL * 1024ULL
 
-
-#define ITERATIONS 2000
-
+intptr_t global[7*MB];
 
 int main()
 {
-    int some_var[ITERATIONS * 4096*4];
-    //fork();
-    printf("\nGOING IN\n");
-    //sleep(1);
-    size_t j = 0;
-    for (size_t i = 0; i < ITERATIONS; i++)
-    {
-        some_var[j] = i;
-        //printf("Writing: index %ld value is %d\n", i, some_var[j]);
-        j += 1024;
-    }
-    //sleep(1);
-    printf("\nTaking a break.. ufff..\n");
-   // sleep(2);
-    j = 0;
-    for (size_t i = 0; i < ITERATIONS; i++)
-    {
-        printf("Reading: index %ld value is %d\n", i, some_var[j]);
-        assert(some_var[j] == i);
-        j += 1024;
-    }
-    printf("\nGOING OUT\n");
 
+    for(size_t i = 0; i < 7*MB; ++i)
+    {
+        if(!(i % 4096))
+        {
+            global[i] = (intptr_t)&global[i];
+        }
+    }
 
+    for(size_t i = 0; i < 7*MB; ++i)
+    {
+        if(!(i % 4096))
+        {
+            assert(global[i] == (intptr_t)&global[i] && "swapIn failed");
+        }
+    }
 
     return 0;
 }
