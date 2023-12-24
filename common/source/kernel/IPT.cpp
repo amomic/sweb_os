@@ -92,7 +92,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 
 [[maybe_unused]] size_t IPT::getRefCount(size_t page_nr)
 {
-    //assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
+    assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
     auto ret_val = ipt_.at(page_nr)->references_list_.size();
     return ret_val;
 }

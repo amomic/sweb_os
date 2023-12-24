@@ -5,6 +5,7 @@
 #include "ArchCommon.h"
 #include "Thread.h"
 #include "ArchMemory.h"
+#include "UserProcess.h"
 #include "kprintf.h"
 #include "Scheduler.h"
 #include "KernelMemoryManager.h"

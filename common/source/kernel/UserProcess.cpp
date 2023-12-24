@@ -753,3 +753,9 @@ bool UserProcess::CheckStack(size_t pos) {
     threads_lock_.release();
     return false;
 }
+
+void UserProcess::releasearchmemLocks()
+{
+    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
+        currentThread->loader_->arch_memory_.arch_mem_lock.release();
+}

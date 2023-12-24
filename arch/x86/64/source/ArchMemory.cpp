@@ -30,9 +30,9 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
     debug(A_MEMORY, "[Fork] Copy constructor in Arch Memory called!\n");
 
     //lock with parent lock
-    arch_mem_lock.acquire();
 
     page_map_level_4_ = PageManager::instance()->allocPPN();
+    arch_mem_lock.acquire();
     PageMapLevel4Entry* new_pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
     memcpy((void*) new_pml4, (void*) kernel_page_map_level_4, PAGE_SIZE);
     //memset(new_pml4, 0, PAGE_SIZE / 2); // should be zero, this is just for safety
@@ -56,8 +56,9 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
           child_pml4[pml4i] = parent_pml4[pml4i];
 
           IPT::addReference(parent_pml4[pml4i].page_ppn, this, -1, PDPT);
-*/
+*/          arch_mem_lock.release();
           pdpt_ = PageManager::instance()->allocPPN();//TODO DELETE THIS
+          arch_mem_lock.acquire();
           child_pml4[pml4i].page_ppn = pdpt_;//TODO DELETE THIS
           debug(A_MEMORY, "[Fork] PML4 assigned to child. Starting PDPT!\n");
 
@@ -82,7 +83,9 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                   IPT::addReference(parent_pdpt[pdpti].pd.page_ppn, this, -2, PAGE_DIR);
 */
+                  arch_mem_lock.release();
                   pd_ = PageManager::instance()->allocPPN(); //TODO DELETE THIS
+                  arch_mem_lock.acquire();
                   child_pdpt[pdpti].pd.page_ppn = pd_;//TODO DELETE THIS
 
                   debug(A_MEMORY, "[Fork] PDPT assigned to child. Starting PD!\n");
@@ -108,8 +111,10 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                           IPT::addReference(parent_pd[pdi].pt.page_ppn, this, -3, PAGE_TABLE);
 */
-                          pt_ = PageManager::instance()->allocPPN();//TODO DELETE THIS
-                          child_pd[pdi].pt.page_ppn = pt_;//TODO DELETE THIS
+                          arch_mem_lock.release();
+                          pt_ = PageManager::instance()->allocPPN();
+                          arch_mem_lock.acquire();
+                          child_pd[pdi].pt.page_ppn = pt_;
 
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
@@ -753,6 +758,8 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 
         debug(A_MEMORY, "[COW] Cow called in process with PID: %zu\n ",ProcessRegistry::instance()->process_count_);
 
+        IPT::instance()->ipt_lock_.acquire();
+        arch_mem_lock.release();
         //Last reference
         if(IPT::instance()->getRefCount(mapping.pt[mapping.pti].page_ppn) == 1)
         {
@@ -760,6 +767,8 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             debug(A_MEMORY, "[COW] Page is last reference and will be writable from this point!\n");
             mapping.pt[mapping.pti].cow = 0;
             mapping.pt[mapping.pti].writeable = 1;
+            IPT::instance()->ipt_lock_.release();
+            arch_mem_lock.acquire();
         }
         else //Not last reference
         {
@@ -768,8 +777,6 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             alloc_pages->front().second = true;
 
             //Delete reference from IPT
-            arch_mem_lock.release();
-            IPT::instance()->ipt_lock_.acquire();
             IPT::instance()->deleteReference(mapping.pt[mapping.pti].page_ppn, this);
             IPT::instance()->ipt_lock_.release();
             arch_mem_lock.acquire();
@@ -787,7 +794,13 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             IPT::instance()->ipt_lock_.acquire();
             IPT::instance()->addReference(mapping.pt[mapping.pti].page_ppn, this, ((((((mapping.pml4i << 9) | mapping.pdpti) << 9) | mapping.pdi) << 9) | mapping.pti), PAGE);
             IPT::instance()->ipt_lock_.release();
+
         }
     }
-    arch_mem_lock.release();
+}
+
+void ArchMemory::releasearchmemLocks()
+{
+    if(arch_mem_lock.isHeldBy(currentThread))
+        arch_mem_lock.release();
 }

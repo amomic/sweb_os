@@ -111,6 +111,7 @@ class ArchMemory
 
     bool isCowSet(uint64 virt_address);
     void cowPageCopy(uint64 virt_address, ustl::map<size_t, bool> *alloc_pages);
+    void releasearchmemLocks();
 
   private:
     /**
@@ -138,4 +139,5 @@ class ArchMemory
     template<typename T> static bool checkAndRemove(pointer map_ptr, uint64 index);
 
     uint64 getPML4();
+
 };

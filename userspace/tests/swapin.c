@@ -19,6 +19,8 @@ int main()
         }
     }
 
+    fork();
+
     for(size_t i = 0; i < 7*MB; ++i)
     {
         if(!(i % 4096))

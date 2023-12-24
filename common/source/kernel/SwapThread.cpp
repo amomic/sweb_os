@@ -80,7 +80,8 @@ void SwapThread::Run() {
 
 size_t SwapThread::SwapOut(SwapRequest* request)
 {
-    IPT::instance()->ipt_lock_.acquire();
+    if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+        IPT::instance()->ipt_lock_.acquire();
     size_t rand_ppn = randomPRA();
     uint32 p = 0;
     debug(SWAP_THREAD, "after pra\n \n");
@@ -148,7 +149,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.release();
-IPT::instance()->ipt_lock_.acquire();
+    IPT::instance()->ipt_lock_.acquire();
 
     char* iAddress = reinterpret_cast<char *>(ArchMemory::getIdentAddressOfPPN(new_page));
 
@@ -218,6 +219,8 @@ size_t SwapThread::addCond([[maybe_unused]] size_t found) {
 
     if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
         currentThread->loader_->arch_memory_.arch_mem_lock.release();
+    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
+        currentThread->loader_->arch_memory_.arch_mem_lock.release();
     if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.release();
     if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
@@ -226,6 +229,7 @@ size_t SwapThread::addCond([[maybe_unused]] size_t found) {
     swap_lock_.acquire();
     debug(SYSCALL, "in add cond after aquire\n");
     swap_request_map_.push(request);
+    currentThread->loader_->arch_memory_.releasearchmemLocks();
 
     debug(SYSCALL, "in add cond after push\n");
     swap_wait.signal();
