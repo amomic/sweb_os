@@ -251,8 +251,15 @@ void PageManager::freePPN(uint32 page_number, uint32 page_size)
     lowest_unreserved_page_ = page_number;
   for (uint32 p = page_number; p < (page_number + page_size / PAGE_SIZE); ++p)
   {
-    assert(page_usage_table_->getBit(p) && "Double free PPN");
-    page_usage_table_->unsetBit(p);
+     if(!page_usage_table_->getBit(p))
+     {
+         continue;
+     }
+     else
+         page_usage_table_->unsetBit(p);
+
+    //assert(page_usage_table_->getBit(p) && "Double free PPN");
+
   }
   lock_.release();
 }

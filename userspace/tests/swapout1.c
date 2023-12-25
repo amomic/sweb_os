@@ -2,12 +2,12 @@
 #include "stdio.h"
 #define MB 1024ULL * 1024ULL
 
-size_t global[5*MB];
+size_t global[10*MB];
 
 int main()
 {
 
-    for(size_t i = 0; i < 5*MB; ++i)
+    for(size_t i = 0; i < 10*MB; ++i)
     {
         if(!(i % 4096))
         {
