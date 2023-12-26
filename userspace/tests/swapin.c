@@ -18,6 +18,7 @@ int main()
 
     for(size_t i = 0; i < 7*SIZE; ++i)
     {
+        printf(" global id is: %ld, and we got %ld\n", global[i], (intptr_t)&global[i] );
         assert(global[i] == (intptr_t)&global[i]);
     }
 
