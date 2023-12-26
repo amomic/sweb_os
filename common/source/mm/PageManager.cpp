@@ -256,9 +256,11 @@ void PageManager::freePPN(uint32 page_number, uint32 page_size)
          continue;
      }
      else
+     {
+         assert(page_usage_table_->getBit(p) && "Double free PPN");
          page_usage_table_->unsetBit(p);
+     }
 
-    //assert(page_usage_table_->getBit(p) && "Double free PPN");
 
   }
   lock_.release();

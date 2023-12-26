@@ -27,8 +27,7 @@ void* func(){
         printf("Parent process - after %d\n", data);
 
     }
-    pthread_exit(0);
-    return NULL;
+    return 0;
 }
 
 int main()

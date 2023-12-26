@@ -2,32 +2,26 @@
 #include "stdio.h"
 #include "assert.h"
 #include "unistd.h"
-#define WAITING_TIME 1024*1024*100
-#define NUM_THREADS 100
-#define MB 1024ULL * 1024ULL
+#define SIZE ((500 * 1000)/sizeof(long))
 
-intptr_t global[7*MB];
+intptr_t global[7*SIZE];
 
 int main()
 {
 
-    for(size_t i = 0; i < 7*MB; ++i)
+    for(size_t i = 0; i < 7*SIZE;++ i)
     {
-        if(!(i % 4096))
-        {
-            global[i] = (intptr_t)&global[i];
-        }
+         global[i] = (intptr_t)&global[i];
     }
 
     fork();
 
-    for(size_t i = 0; i < 7*MB; ++i)
+    for(size_t i = 0; i < 7*SIZE; ++i)
     {
-        if(!(i % 4096))
-        {
-            assert(global[i] == (intptr_t)&global[i] && "swapIn failed");
-        }
+        assert(global[i] == (intptr_t)&global[i]);
     }
+
+    printf("SUCCESS\n");
 
     return 0;
 }

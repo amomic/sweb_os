@@ -760,6 +760,13 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 
         IPT::instance()->ipt_lock_.acquire();
         arch_mem_lock.release();
+
+        if(mapping.pt[mapping.pti].swapped == 1)
+        {
+            IPT::instance()->ipt_lock_.release();
+            return;
+        }
+
         //Last reference
         if(IPT::instance()->getRefCount(mapping.pt[mapping.pti].page_ppn) == 1)
         {
@@ -772,28 +779,27 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         }
         else //Not last reference
         {
+            arch_mem_lock.acquire();
             debug(A_MEMORY, "[COW] Page is NOT last reference and will be copied!\n");
             auto cow_copy_page= alloc_pages->front().first;
             alloc_pages->front().second = true;
-
-            //Delete reference from IPT
+            arch_mem_lock.release();
+            IPT::instance()->ipt_lock_.release();
+            IPT::instance()->ipt_lock_.acquire();
+            IPT::instance()->addReference(cow_copy_page, this,virt_addresss/PAGE_SIZE, PAGE);
             IPT::instance()->deleteReference(mapping.pt[mapping.pti].page_ppn, this);
             IPT::instance()->ipt_lock_.release();
-            arch_mem_lock.acquire();
 
             //Copy page
+            arch_mem_lock.acquire();
             memcpy((void*) getIdentAddressOfPPN(cow_copy_page), (void*)cow_page, PAGE_SIZE);
 
             //Set relevant bits and pages
             mapping.pt[mapping.pti].cow = 0;
             mapping.pt[mapping.pti].writeable = 1;
             mapping.pt[mapping.pti].page_ppn = cow_copy_page;
-
-            //Add new reference
             arch_mem_lock.release();
-            IPT::instance()->ipt_lock_.acquire();
-            IPT::instance()->addReference(mapping.pt[mapping.pti].page_ppn, this, ((((((mapping.pml4i << 9) | mapping.pdpti) << 9) | mapping.pdi) << 9) | mapping.pti), PAGE);
-            IPT::instance()->ipt_lock_.release();
+
 
         }
     }
