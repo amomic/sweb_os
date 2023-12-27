@@ -26,7 +26,7 @@ public:
     size_t block_;
     size_t SwapOut(SwapRequest* request);
 
-    [[maybe_unused]] size_t SwapIn(SwapRequest* request);
+    [[maybe_unused]] void SwapIn(SwapRequest* request);
     ustl::queue <SwapRequest*> swap_request_map_;
     Mutex swap_lock_;
     Condition swap_wait;

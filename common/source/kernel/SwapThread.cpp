@@ -164,7 +164,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 }
 
 
-[[maybe_unused]] size_t SwapThread::SwapIn(SwapRequest *request)
+[[maybe_unused]] void SwapThread::SwapIn(SwapRequest *request)
 {
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     size_t new_page = PageManager::instance()->allocPPN();
@@ -185,8 +185,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     if(swap_entry == IPT::instance()->sipt_.end()){
         debug(SWAP_THREAD, "Page was already swapped!\n");
         IPT::instance()->ipt_lock_.release();
-
-        return 1;
+        return;
     } else {
         auto device_ret = device_->readData(the_offset * PAGE_SIZE, PAGE_SIZE, iAddress);
         if(device_ret)
@@ -226,8 +225,6 @@ size_t SwapThread::SwapOut(SwapRequest* request)
         disc_alloc_lock_.release();
 
         IPT::instance()->ipt_lock_.release();
-
-        return 0;
     }
 }
 
