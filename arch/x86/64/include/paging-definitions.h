@@ -33,7 +33,9 @@ typedef struct
   uint64 ignored_2                 :4;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :10;
+  uint64 ignored_1                 :9;
+    uint64 swapped                    :1;
+
   uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__)) PageMapLevel4Entry;
@@ -53,7 +55,9 @@ struct PageDirPointerTablePageDirEntry
   uint64 ignored_2                 :4;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :10;
+  uint64 ignored_1                 :9;
+    uint64 swapped                    :1;
+
   uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
@@ -76,7 +80,9 @@ struct PageDirPointerTablePageEntry
   uint64 reserved_2                :17; // must be 0
   uint64 page_ppn                  :10;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :10;
+  uint64 ignored_1                 :9;
+  uint64 swapped                    :1;
+
   uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
@@ -102,7 +108,8 @@ struct PageDirPageTableEntry
   uint64 ignored_2                 :4;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :10;
+  uint64 ignored_1                 :9;
+  uint64 swapped                    :1;
   uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
@@ -125,7 +132,8 @@ struct PageDirPageEntry
   uint64 reserved_2                :8; // must be 0
   uint64 page_ppn                  :19;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :10;
+  uint64 ignored_1                 :9;
+  uint64 swapped                    :1;
   uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));

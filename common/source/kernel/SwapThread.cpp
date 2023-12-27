@@ -82,6 +82,8 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 {
     if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.acquire();
+    debug(SWAP_THREAD, "before pra\n \n");
+
     size_t rand_ppn = randomPRA();
     uint32 p = 0;
     debug(SWAP_THREAD, "after pra\n \n");
@@ -109,22 +111,28 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     {
 
         debug(SWAP_THREAD, "Swap Out vpn : %zx. \n", inv_entry->virt_page_num_);
-        ArchMemoryMapping m = inv_entry->arch_mem_->resolveMapping(inv_entry->virt_page_num_);
-        PageTableEntry* PT_entry = (PageTableEntry*)    inv_entry->arch_mem_->getIdentAddressOfPPN(m.pt_ppn);
-        if(inv_entry->virt_page_num_ == 0x800003f / PAGE_SIZE)
+        size_t size = 0;
+        for(auto memory : inv_entry->references_list_)
         {
-            debug(SWAP_THREAD, "Swap Out vpn : %zx. \n", inv_entry->virt_page_num_);
-            debug(SWAP_THREAD, "ResolvedMapping ppn is:  %zu, our ppn is  %zu  \n", (size_t)m.pt[m.pti].page_ppn,
-                  rand_ppn);
-            //assert(0 && "Why\n");
+            ArchMemoryMapping m = memory->resolveMapping(inv_entry->virt_page_num_);
+
+            PageTableEntry* PT_entry = (PageTableEntry*)   memory->getIdentAddressOfPPN(m.pt_ppn);
+
+            PT_entry[m.pti].present = 0;
+            if(size == 0)
+            {
+                size = device_->writeData(block * PAGE_SIZE, PAGE_SIZE,reinterpret_cast<char*>(ArchMemory::getIdentAddressOfPPN(m.pt[m.pti].page_ppn)));
+                assert(size);
+
+            }
+            PT_entry[m.pti].swapped = 1;
+            m.pt[m.pti].page_ppn = (uint64)block;
         }
-        PT_entry[m.pti].present = 0;
-        PT_entry[m.pti].swapped = 1;
-        debug(SWAP_THREAD, "ResolvedMapping ppn is:  %zu, our ppn is  %zu  \n", (size_t)m.pt[m.pti].page_ppn,
+
+        debug(SWAP_THREAD, "ResolvedMapping ppn is:  %zu, our ppn is  %zu  \n", block,
               rand_ppn);
-        size_t size = device_->writeData(block * PAGE_SIZE, PAGE_SIZE,reinterpret_cast<char*>(ArchMemory::getIdentAddressOfPPN(m.pt[m.pti].page_ppn)));
-        assert(size);
-        m.pt[m.pti].page_ppn = (uint64)block;
+
+
         IPT::instance()->swapOutRef(rand_ppn,found);
         request->ppn_ = rand_ppn;
         debug(SWAP_THREAD, "Swaped out %zu \n", request->ppn_);
@@ -134,6 +142,20 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     }
     else
     {
+
+        // unreserve bit
+
+        disc_alloc_lock_.acquire();
+        if(block < lowest_unreserved_page_){
+            lowest_unreserved_page_ = block;
+        }
+
+        for(auto i = block; i < (block + 0); ++i){
+            assert(bitmap_->getBit(i) && "Double Free!\n");
+            bitmap_->unsetBit(i);
+        }
+
+        disc_alloc_lock_.release();
         debug(SWAP_THREAD, "Swap Out failed. \n");
         IPT::instance()->ipt_lock_.release();
 
@@ -146,6 +168,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 {
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     size_t new_page = PageManager::instance()->allocPPN();
+    debug(SWAP_THREAD, "after alloc ppn in swapin\n");
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.release();
@@ -153,11 +176,12 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
     char* iAddress = reinterpret_cast<char *>(ArchMemory::getIdentAddressOfPPN(new_page));
 
+    debug(SWAP_THREAD, "after iaddress  ppn in swapin\n");
 
     size_t the_offset = request->block_number_;
 
     auto swap_entry = IPT::instance()->sipt_.find(the_offset);
-
+    debug(SWAP_THREAD, "after swap entry\n");
     if(swap_entry == IPT::instance()->sipt_.end()){
         debug(SWAP_THREAD, "Page was already swapped!\n");
         IPT::instance()->ipt_lock_.release();
@@ -170,16 +194,24 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
         //bool is_mapped = request->user_process->getLoader()->arch_memory_.mapPage(request->vpn_, new_page, 1);
 
+        debug(SWAP_THREAD, "before for loop\n");
+        for(auto memory : swap_entry->second->references_list_) {
+            ArchMemoryMapping m = memory->resolveMapping(request->vpn_);
 
-        ArchMemoryMapping am_map = request->user_process->getLoader()->arch_memory_.resolveMapping(request->vpn_);
+            PageTableEntry* PT_entry = (PageTableEntry*)   memory->getIdentAddressOfPPN(m.pt_ppn);
+            PT_entry[m.pti].swapped = 0;
+            PT_entry[m.pti].page_ppn = new_page;
+            PT_entry[m.pti].present = 1;
+        }
+        debug(SWAP_THREAD, "after for loop\n");
 
-        am_map.pt[am_map.pti].swapped = 0;
-        am_map.pt[am_map.pti].present = 1;
-        am_map.pt[am_map.pti].page_ppn = new_page;
+
+
 
         IPT::instance()->ipt_[new_page] = swap_entry->second;
         IPT::instance()->sipt_.erase(the_offset);
 
+        debug(SWAP_THREAD, "after erase\n");
 
         disc_alloc_lock_.acquire();
         if(the_offset < lowest_unreserved_page_){

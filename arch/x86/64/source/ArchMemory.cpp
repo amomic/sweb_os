@@ -119,7 +119,6 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                           debug(A_MEMORY, "[Fork] PD assigned to child. Starting PT!\n");
 
 //------------------------------------------PT--------------------------------------------------------------------------
-
                           PageTableEntry *parent_pt = (PageTableEntry*) getIdentAddressOfPPN(parent_pd[pdi].pt.page_ppn);
                           PageTableEntry *child_pt = (PageTableEntry*) getIdentAddressOfPPN(child_pd[pdi].pt.page_ppn);
 
@@ -134,15 +133,16 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                               {
                                   parent_pt[pti].cow = 1;
                                   parent_pt[pti].writeable = 0;
+                                  child_pt[pti].cow = 1;
+                                  child_pt[pti].writeable = 0;
+                                  parent_pt[pti].swapped = 0;
+                                  child_pt[pti].swapped = 0;
                                   //child_pt[pti] = parent_pt[pti];
                                   child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
-
-                                  //assert(!parent_pt[pti].swapped && "Present bit has to be 0 if marked as swapped!");
-
                                   debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
                                   debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
                                   IPT::instance()->ipt_lock_.acquire();
-                                  IPT::instance()->addReference(parent_pt[pti].page_ppn, this,((((((pml4i << 9) | pdpti) << 9) | pdi) << 9) | pti), PAGE);
+                                  IPT::instance()->addReference(parent_pt[pti].page_ppn, this,((pml4i << 39) + (pdpti << 30) + (pdi << 21 ) + (pti << 12)) / PAGE_SIZE, PAGE);
                                   IPT::instance()->ipt_lock_.release();
 ;                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
@@ -150,8 +150,10 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                               {
                                   parent_pt[pti].cow = 1;
                                   parent_pt[pti].writeable = 0;
-
-                                  child_pt[pti] = parent_pt[pti];
+                                  child_pt[pti].cow = 1;
+                                  child_pt[pti].writeable = 0;
+                                  child_pt[pti].swapped = 1;
+                                  child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
 
                                   IPT::instance()->ipt_lock_.acquire();
                                   IPT::instance()->addSwappedRef(parent_pt[pti].page_ppn, this);
@@ -178,31 +180,36 @@ bool ArchMemory::checkAndRemove(pointer map_ptr, uint64 index)
   ((uint64*) map)[index] = 0;
   for (uint64 i = 0; i < PAGE_DIR_ENTRIES; i++)
   {
-    if (map[i].present != 0)
+    if (map[i].present != 0 || map[i].swapped)
       return false;
   }
   return true;
 }
 
-bool ArchMemory::unmapPage(uint64 virtual_page)
-{
-  ArchMemoryMapping m = resolveMapping(virtual_page);
+bool ArchMemory::unmapPage(uint64 virtual_page) {
+    ArchMemoryMapping m = resolveMapping(virtual_page);
+    if (m.pt && m.pt[m.pti].present == 0 && m.pt[m.pti].swapped == 1) {
+        IPT::instance()->deleteSwappedRef(m.pt[m.pti].page_ppn, this);
+        m.pt[m.pti].swapped = 0;
+        return true;
+    }
 
 
-  assert(m.page_ppn != 0 && m.page_size == PAGE_SIZE && m.pt[m.pti].present);
+    assert(m.page_ppn != 0 && m.page_size == PAGE_SIZE && m.pt[m.pti].present);
 
-  m.pt[m.pti].present = 0;
-  m.pt[m.pti].cow = 0;
+    m.pt[m.pti].present = 0;
+    m.pt[m.pti].cow = 0;
 
 
-  if(IPT::instance()->getRefCount(m.pt[m.pti].page_ppn) == 1)
-  {
-      PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
-      IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
-  }
-  else if(IPT::instance()->ipt_.find(m.pt[m.pti].page_ppn) == IPT::instance()->ipt_.end()) {
-      PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
-  }
+    if (IPT::instance()->getRefCount(m.pt[m.pti].page_ppn) == 1) {
+        PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
+        IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
+    } else if (IPT::instance()->ipt_.find(m.pt[m.pti].page_ppn) == IPT::instance()->ipt_.end()) {
+        PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
+    } else
+    {
+        IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
+    }
 
   //PageManager::instance()->freePPN(m.page_ppn);
   ((uint64*)m.pt)[m.pti] = 0; // for easier debugging
@@ -257,10 +264,10 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
   //assert(arch_mem_lock.isHeldBy(currentThread));
   //assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread));
 
-  if(m.pt != nullptr && (m.pt[m.pti].present || m.pt[m.pti].swapped))
-  {
-      return false;
-  }
+//  if(m.pt != nullptr && (m.pt[m.pti].present || m.pt[m.pti].swapped))
+//  {
+//      return false;
+//  }
 
   if (m.pdpt_ppn == 0)
   {
@@ -332,9 +339,10 @@ ArchMemory::~ArchMemory()
               PageTableEntry* pt = (PageTableEntry*) getIdentAddressOfPPN(pd[pdi].pt.page_ppn);
               for (uint64 pti = 0; pti < PAGE_TABLE_ENTRIES; pti++)
               {
+                  IPT::instance()->ipt_lock_.acquire();
                 if (pt[pti].present)
                 {
-                    IPT::instance()->ipt_lock_.acquire();
+
                     if(IPT::instance()->getRefCount(pt[pti].page_ppn) == 1)
                     {
                         PageManager::instance()->freePPN(pt[pti].page_ppn);
@@ -348,10 +356,23 @@ ArchMemory::~ArchMemory()
                         PageManager::instance()->freePPN(pt[pti].page_ppn);
                         IPT::instance()->ipt_lock_.release();
 
-                    }else
-                        IPT::instance()->ipt_lock_.release();
+                    }else {
 
+                        IPT::instance()->deleteReference(pt[pti].page_ppn, this);
+                        IPT::instance()->ipt_lock_.release();
+                    }
+                    pt[pti].present = 0;
                 }
+                else if(pt[pti].swapped)
+                {
+                    IPT::instance()->deleteSwappedRef(pt[pti].page_ppn, this);
+                    IPT::instance()->ipt_lock_.release();
+
+                    pt[pti].swapped = 0;
+                }
+                else
+                    IPT::instance()->ipt_lock_.release();
+
               }
               pd[pdi].pt.present = 0; //TODO DELETE THIS
               PageManager::instance()->freePPN(pd[pdi].pt.page_ppn);//TODO DELETE THIS

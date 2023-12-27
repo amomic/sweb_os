@@ -9,7 +9,8 @@ intptr_t global[7*MB];
 int main()
 {
 
-    for(size_t i = 0; i < 7*MB; ++i)
+
+    for(size_t i = 0; i < 7*MB; i+= 7)
     {
         if(!(i % 4096))
         {
@@ -19,7 +20,7 @@ int main()
 
     fork();
 
-    for(size_t i = 0; i < 7*MB; ++i)
+    for(size_t i = 0; i < 7*MB; i+=7)
     {
         if(!(i % 4096))
         {

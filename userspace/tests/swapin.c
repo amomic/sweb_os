@@ -9,14 +9,14 @@ intptr_t global[7*SIZE];
 int main()
 {
 
-    for(size_t i = 0; i < 7*SIZE;++ i)
+    for(size_t i = 0; i < 7*SIZE;i+= 1024)
     {
          global[i] = (intptr_t)&global[i];
     }
 
     fork();
 
-    for(size_t i = 0; i < 7*SIZE; ++i)
+    for(size_t i = 0; i < 7*SIZE; i+= 1024)
     {
         printf(" global id is: %ld, and we got %ld\n", global[i], (intptr_t)&global[i] );
         assert(global[i] == (intptr_t)&global[i]);

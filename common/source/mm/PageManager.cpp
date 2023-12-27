@@ -220,7 +220,7 @@ uint32 PageManager::allocPPN(uint32 page_size)
       debug(SYSCALL, "now3\n");
      found = SwapThread::instance()->addCond(found);
       debug(SYSCALL, "now4\n");
-      memset((void*)ArchMemory::getIdentAddressOfPPN(found), 0, PAGE_SIZE);
+      memset((void*)ArchMemory::getIdentAddressOfPPN(found), 0, page_size);
       return found;
   }
 

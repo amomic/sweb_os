@@ -63,7 +63,6 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
     assert(ipt_.find(ppn) != ipt_.end() && "IPT does not have that PPN!");
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
 
-    assert(!ipt_.at(ppn)->references_list_.empty() && "IPT empty!");
 
     if(ipt_.at(ppn)->references_list_.size() == 1)
     {
