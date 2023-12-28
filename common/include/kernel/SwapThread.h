@@ -26,8 +26,8 @@ public:
     size_t block_;
     size_t SwapOut(SwapRequest* request);
 
-    [[maybe_unused]] void SwapIn(SwapRequest* request);
-    ustl::queue <SwapRequest*> swap_request_map_;
+    bool SwapIn(SwapRequest* request);
+    ustl::vector <SwapRequest* > swap_request_map_;
     Mutex swap_lock_;
     Condition swap_wait;
     size_t lowest_unreserved_page_;
@@ -45,9 +45,8 @@ public:
 
 private:
     static SwapThread *instance_;
-
-
     bool reserveBlock(uint32 block, uint32 num);
+
 };
 struct SwapRequest{
     size_t swap_type_;
@@ -56,6 +55,7 @@ struct SwapRequest{
     size_t block_number_;
     UserProcess *user_process;
     bool is_done = false;
+    bool duplicate_ = false;
 
     [[maybe_unused]]void initDevice(){
 

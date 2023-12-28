@@ -50,10 +50,11 @@ void SwapThread::Run() {
             Scheduler::instance()->yield();
             continue;
         }
-        auto request = swap_request_map_.front();
+        auto request = swap_request_map_.back();
+
         if(request->swap_type_ == Thread::SWAP_TYPE::SWAP_OUT)
         {
-            swap_request_map_.pop();
+            swap_request_map_.pop_back();
             SwapOut(request);
             request->is_done = true;
             request_cond_.signal();
@@ -63,7 +64,7 @@ void SwapThread::Run() {
 
         else if(request->swap_type_ == Thread::SWAP_TYPE::SWAP_IN)
         {
-            swap_request_map_.pop();
+            swap_request_map_.pop_back();
             SwapIn(request);
             request->is_done = true;
             request_cond_.signal();
@@ -114,7 +115,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
         size_t size = 0;
         for(auto memory : inv_entry->references_list_)
         {
-            ArchMemoryMapping m = memory->resolveMapping(inv_entry->virt_page_num_);
+            ArchMemoryMapping m = memory->resolveMapping(memory->page_map_level_4_,inv_entry->virt_page_num_);
 
             PageTableEntry* PT_entry = (PageTableEntry*)   memory->getIdentAddressOfPPN(m.pt_ppn);
 
@@ -164,7 +165,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 }
 
 
-[[maybe_unused]] void SwapThread::SwapIn(SwapRequest *request)
+[[maybe_unused]] bool SwapThread::SwapIn(SwapRequest *request)
 {
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     size_t new_page = PageManager::instance()->allocPPN();
@@ -185,7 +186,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     if(swap_entry == IPT::instance()->sipt_.end()){
         debug(SWAP_THREAD, "Page was already swapped!\n");
         IPT::instance()->ipt_lock_.release();
-        return;
+        return false;
     } else {
         auto device_ret = device_->readData(the_offset * PAGE_SIZE, PAGE_SIZE, iAddress);
         if(device_ret)
@@ -195,7 +196,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
         debug(SWAP_THREAD, "before for loop\n");
         for(auto memory : swap_entry->second->references_list_) {
-            ArchMemoryMapping m = memory->resolveMapping(request->vpn_);
+            ArchMemoryMapping m = memory->resolveMapping(memory->page_map_level_4_,request->vpn_);
 
             PageTableEntry* PT_entry = (PageTableEntry*)   memory->getIdentAddressOfPPN(m.pt_ppn);
             PT_entry[m.pti].swapped = 0;
@@ -203,7 +204,6 @@ size_t SwapThread::SwapOut(SwapRequest* request)
             PT_entry[m.pti].present = 1;
         }
         debug(SWAP_THREAD, "after for loop\n");
-
 
 
 
@@ -226,6 +226,8 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
         IPT::instance()->ipt_lock_.release();
     }
+
+    return true;
 }
 
 
@@ -257,7 +259,7 @@ size_t SwapThread::addCond([[maybe_unused]] size_t found) {
     debug(SYSCALL, "in add cond before aquire\n");
     swap_lock_.acquire();
     debug(SYSCALL, "in add cond after aquire\n");
-    swap_request_map_.push(request);
+    swap_request_map_.push_back(request);
     currentThread->loader_->arch_memory_.releasearchmemLocks();
 
     debug(SYSCALL, "in add cond after push\n");
@@ -283,7 +285,7 @@ size_t SwapThread::WaitForSwapIn(size_t vpn, ArchMemoryMapping& m){
     if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
         currentThread->loader_->heap_mutex_.release();
     swap_lock_.acquire();
-    swap_request_map_.push(request);
+    swap_request_map_.push_back(request);
     swap_wait.signal();
     swap_lock_.release();
     request_lock_.acquire();

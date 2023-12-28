@@ -120,9 +120,6 @@ void ProcessRegistry::createProcess(const char* path) {
 
 size_t ProcessRegistry::fork()
 {
-    if(progs_running_ == 0)
-        return -1;
-
     process_lock_.acquire();
     UserThread *current_thread = (UserThread*)currentThread;
     UserProcess *current_process = current_thread->getProcess();
@@ -132,15 +129,10 @@ size_t ProcessRegistry::fork()
     process_count_++;
     size_t pid = process_count_;
     UserProcess* new_process = new UserProcess(*current_process, *current_thread, pid);
+    assert(new_process);
     process_lock_.acquire();
 
     process_map_.push_back(ustl::make_pair(pid, current_process));
-
-    if(new_process == nullptr)
-    {
-        process_lock_.release();
-        return -1;
-    }
 
     process_lock_.release();
 

@@ -129,6 +129,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
 
                           for(uint64 pti = 0; pti < PAGE_TABLE_ENTRIES; pti++)
                           {
+                              size_t vpn = pml4i << 27 | pdpti << 18 | pdi << 9 | pti;
                               if(parent_pt[pti].present)
                               {
                                   parent_pt[pti].cow = 1;
@@ -142,7 +143,7 @@ ArchMemory::ArchMemory(ArchMemory &parent) : arch_mem_lock("arch_mem_lock")
                                   debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
                                   debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
                                   IPT::instance()->ipt_lock_.acquire();
-                                  IPT::instance()->addReference(parent_pt[pti].page_ppn, this,((pml4i << 39) + (pdpti << 30) + (pdi << 21 ) + (pti << 12)) / PAGE_SIZE, PAGE);
+                                  IPT::instance()->addReference(parent_pt[pti].page_ppn, this,vpn, PAGE);
                                   IPT::instance()->ipt_lock_.release();
 ;                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
@@ -264,10 +265,10 @@ bool ArchMemory::mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_
   //assert(arch_mem_lock.isHeldBy(currentThread));
   //assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread));
 
-//  if(m.pt != nullptr && (m.pt[m.pti].present || m.pt[m.pti].swapped))
-//  {
-//      return false;
-//  }
+  /*if(m.pt != nullptr && (m.pt[m.pti].present || m.pt[m.pti].swapped))
+  {
+      return false;
+  }*/
 
   if (m.pdpt_ppn == 0)
   {

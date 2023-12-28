@@ -11,7 +11,7 @@ int main()
 
     for(size_t i = 0; i < 7*SIZE;i+= 1024)
     {
-         global[i] = (intptr_t)&global[i];
+        global[i] = (intptr_t)&global[i];
     }
 
     fork();
