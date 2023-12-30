@@ -97,6 +97,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         debug(SYSCALL, "3\n");
 
         parent_->getProcess()->arch_mem_lock_.acquire();
+        //race condition
         auto m = parent_->getProcess()->loader_->arch_memory_.resolveMapping(address / PAGE_SIZE);
         parent_->getProcess()->arch_mem_lock_.release();
 

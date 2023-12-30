@@ -185,8 +185,15 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     debug(SWAP_THREAD, "after swap entry\n");
     if(swap_entry == IPT::instance()->sipt_.end()){
         debug(SWAP_THREAD, "Page was already swapped!\n");
+        auto m = request->user_process->getLoader()->arch_memory_.resolveMapping(request->vpn_);
+        auto ret_val = true;
+        if (m.pt[m.pti].swapped)
+            {
+                ret_val = false;
+                debug(SWAP_THREAD, "STill swapped out...\n");
+            }
         IPT::instance()->ipt_lock_.release();
-        return false;
+        return ret_val;
     } else {
         auto device_ret = device_->readData(the_offset * PAGE_SIZE, PAGE_SIZE, iAddress);
         if(device_ret)
