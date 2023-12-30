@@ -7,6 +7,7 @@
 #include "UserThread.h"
 #include "IPT.h"
 #include "ArchThreads.h"
+#include "UserProcess.h"
 #include "ArchMemory.h"
 #include "Thread.h"
 
@@ -185,7 +186,6 @@ size_t SwapThread::SwapOut(SwapRequest* request)
     debug(SWAP_THREAD, "after swap entry\n");
     if(swap_entry == IPT::instance()->sipt_.end()){
         debug(SWAP_THREAD, "Page was already swapped!\n");
-        request->user_process->getLoader()->arch_memory_.arch_mem_lock.acquire();
         auto m = request->user_process->getLoader()->arch_memory_.resolveMapping(request->vpn_);
         auto ret_val = true;
         if (m.pt[m.pti].swapped)
@@ -194,7 +194,6 @@ size_t SwapThread::SwapOut(SwapRequest* request)
                 debug(SWAP_THREAD, "STill swapped out...\n");
                 PageManager::instance()->freePPN(new_page);
             }
-        request->user_process->getLoader()->arch_memory_.arch_mem_lock.acquire();
         IPT::instance()->ipt_lock_.release();
         return ret_val;
     } else {
@@ -266,6 +265,7 @@ size_t SwapThread::addCond([[maybe_unused]] size_t found) {
         IPT::instance()->ipt_lock_.release();
     if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
         currentThread->loader_->heap_mutex_.release();
+
     debug(SYSCALL, "in add cond before aquire\n");
     swap_lock_.acquire();
     debug(SYSCALL, "in add cond after aquire\n");

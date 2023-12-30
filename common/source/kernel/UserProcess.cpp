@@ -733,8 +733,10 @@ bool UserProcess::CheckStack(size_t pos) {
 
             if(!thread->loader_->arch_memory_.checkAddressValid(pos))
             {
+                threads_lock_.release();
                 size_t ppn = PageManager::instance()->allocPPN();
                 thread->loader_->arch_memory_.arch_mem_lock.acquire();
+                threads_lock_.acquire();
                 bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
                 thread->loader_->arch_memory_.arch_mem_lock.release();
                 if (!mapped) {
