@@ -105,7 +105,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
     //ScopeLock lock(ipt_lock_);
     debug(SWAP_THREAD, "PPN THATS SWAPPED IS %zu\n", ppn);
     sipt_[block_number] = ipt_.at(ppn);
-   ipt_.erase(ppn);
+    ipt_.erase(ppn);
     return 0;
 }
 
