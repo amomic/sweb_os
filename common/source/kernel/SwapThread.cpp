@@ -202,7 +202,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
             debug(SWAP_THREAD, "Hmm... device\n");
 
         //bool is_mapped = request->user_process->getLoader()->arch_memory_.mapPage(request->vpn_, new_page, 1);
-
+        // Lock this S
         debug(SWAP_THREAD, "before for loop\n");
         for(auto memory : swap_entry->second->references_list_) {
             ArchMemoryMapping m = memory->resolveMapping(memory->page_map_level_4_,request->vpn_);
@@ -257,10 +257,8 @@ size_t SwapThread::addCond([[maybe_unused]] size_t found) {
     //condition
     debug(SYSCALL, "ughhhhhhhhhhhhhhhhhhn");
 
-    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
-        currentThread->loader_->arch_memory_.arch_mem_lock.release();
-    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
-        currentThread->loader_->arch_memory_.arch_mem_lock.release();
+    if(currentThread->loader_->arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread))
+        currentThread->loader_->arch_memory_.process_->arch_mem_lock_.release();
     if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.release();
     if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))

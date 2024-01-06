@@ -34,7 +34,7 @@ UserProcess::UserProcess(ustl::string filename, FileSystemInfo *fs_info, uint32 
         delete this;
         return;
     }
-
+    loader_->arch_memory_.process_ = this;
 
     UserThread *user_thread = new UserThread(filename,fs_info,terminal_number, this, NULL, loader_->getEntryFunction(), 0, 0, NULL);
 
@@ -70,17 +70,18 @@ UserProcess::UserProcess(UserProcess &parent_process, UserThread &current_thread
 
     ProcessRegistry::instance()->processStart(); //should also be called if you fork a process
 
+
     if (fd_ >= 0)
     {
         debug(USERPROCESS, "pid -> %lu \n", parent_process.pid_);
-        loader_ = new Loader(*parent_process.loader_, fd_);
+        loader_ = new Loader(*parent_process.loader_, fd_, this);
     }
 
     if (!loader_ || !loader_->loadExecutableAndInitProcess())
     {
         debug(USERPROCESS, "Error: loading %s failed!\n", filename_.c_str());
         // TODO do we need this?
-        parent_process.loader_->arch_memory_.arch_mem_lock.release();
+
         delete this;
         return;
     }
@@ -388,22 +389,51 @@ void UserProcess::unmapPage() {
 
             if(m.pt && m.pt[m.pti].swapped) {
 
+                if(loader_->arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread)) {
+                    loader_->arch_memory_.process_->arch_mem_lock_.release();
+                }
                 if(IPT::instance()->ipt_lock_.isHeldBy(currentThread)) {
                     IPT::instance()->ipt_lock_.release();
                 }
-                if(loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread)) {
-                    loader_->arch_memory_.arch_mem_lock.release();
-                }
                 SwapThread::instance()->WaitForSwapIn(it, m);
+                if(!loader_->arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread)) {
+                    loader_->arch_memory_.process_->arch_mem_lock_.acquire();
+                }
                 if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread)) {
                     IPT::instance()->ipt_lock_.acquire();
                 }
-                if(!loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread)) {
-                    loader_->arch_memory_.arch_mem_lock.acquire();
-                }
             }
 
-            currentThread->loader_->arch_memory_.unmapPage(it);
+            if(loader_->arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread)) {
+                loader_->arch_memory_.process_->arch_mem_lock_.release();
+            }
+            if(IPT::instance()->ipt_lock_.isHeldBy(currentThread)) {
+                IPT::instance()->ipt_lock_.release();
+            }
+            ustl::map<size_t, bool> pages;
+
+            //4 to handle reserved stack pages
+            for(int i = 0; i < 4; i++)
+            {
+                uint32 pos = PageManager::instance()->allocPPN();
+                pages[pos] = false;
+            }
+            if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread)) {
+                IPT::instance()->ipt_lock_.acquire();
+            }
+            if(!loader_->arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread)) {
+                loader_->arch_memory_.process_->arch_mem_lock_.acquire();
+            }
+
+            currentThread->loader_->arch_memory_.unmapPage(it, &pages);
+
+            for(auto page : pages)
+            {
+                if(!pages.empty() && page.second == false ) {
+                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                    PageManager::instance()->freePPN(page.first);
+                }
+            }
         }
     }
 
@@ -537,16 +567,30 @@ size_t UserProcess::exec(char* path, char* const* argv){
 }
 
 void UserProcess::setupArguments(Loader* new_loader, size_t args_num, char* const* argv) {
-    uint64 args_page = PageManager::instance()->allocPPN();
-    new_loader->arch_memory_.arch_mem_lock.acquire();
+    ustl::map<size_t, bool> pages;
+
+    //4 to handle reserved stack pages
+    for(int i = 0; i < 4; i++)
+    {
+        uint32 pos = PageManager::instance()->allocPPN();
+        pages[pos] = false;
+    }
+    new_loader->arch_memory_.process_->arch_mem_lock_.acquire();
     uint64 virtual_page = 0;
 
-    bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, args_page, 1);
-    new_loader->arch_memory_.arch_mem_lock.release();
-
+    bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, &pages, 1);
+    new_loader->arch_memory_.process_->arch_mem_lock_.release();
+    for(auto page : pages)
+    {
+        if(!pages.empty() && page.second == false ) {
+            page.second = true;
+            debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+            PageManager::instance()->freePPN(page.first);
+        }
+    }
     assert(vpn_map && "DOES NOT MAP ARGS PAGE!");
 
-    uint64 ident_addr = new_loader->arch_memory_.getIdentAddressOfPPN(args_page, PAGE_SIZE);
+    uint64 ident_addr = new_loader->arch_memory_.getIdentAddressOfPPN(pages.back().first, PAGE_SIZE);
     size_t num_of_args = args_num + 1;
     uint64 start_p = (num_of_args * sizeof(char*)) + ident_addr;
     uint64 start_v = (num_of_args * sizeof(char*));
@@ -712,6 +756,15 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
 
 bool UserProcess::CheckStack(size_t pos) {
     auto thread = ((UserThread *) currentThread);
+
+    ustl::map<size_t, bool> pages;
+
+    //4 to handle reserved stack pages
+    for(int i = 0; i < 4; i++)
+    {
+        uint32 posi = PageManager::instance()->allocPPN();
+        pages[posi] = false;
+    }
     threads_lock_.acquire();
     for (auto it: threads_map_) {
         debug(USERPROCESS, "position %18zx\n", pos);
@@ -730,19 +783,18 @@ bool UserProcess::CheckStack(size_t pos) {
             debug(USERPROCESS, "if pos %18zx\n", pos);
             debug(USERPROCESS, "if start %18zx\n", it.second->stack_start);
             debug(USERPROCESS, "if end %18zx\n", it.second->stack_end);
-
+            // IPT + arch mem lock
             if(!thread->loader_->arch_memory_.checkAddressValid(pos))
             {
                 threads_lock_.release();
-                size_t ppn = PageManager::instance()->allocPPN();
-                thread->loader_->arch_memory_.arch_mem_lock.acquire();
+                IPT::instance()->ipt_lock_.acquire();
+                thread->getProcess()->arch_mem_lock_.acquire();
+                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, &pages, true);
+                thread->getProcess()->arch_mem_lock_.release();
+                IPT::instance()->ipt_lock_.release();
                 threads_lock_.acquire();
-                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, ppn, true);
-                thread->loader_->arch_memory_.arch_mem_lock.release();
+
                 if (!mapped) {
-                    threads_lock_.release();
-                    PageManager::instance()->freePPN(ppn);
-                    threads_lock_.acquire();
                 } else {
                     thread->virtual_pages_.push_back(pos / PAGE_SIZE);
                 }
@@ -753,11 +805,19 @@ bool UserProcess::CheckStack(size_t pos) {
     }
 
     threads_lock_.release();
+    for(auto page : pages)
+    {
+        if(!pages.empty() && page.second == false ) {
+            page.second = true;
+            debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+            PageManager::instance()->freePPN(page.first);
+        }
+    }
     return false;
 }
 
 void UserProcess::releasearchmemLocks()
 {
-    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
-        currentThread->loader_->arch_memory_.arch_mem_lock.release();
+    if(arch_mem_lock_.isHeldBy(currentThread))
+        arch_mem_lock_.release();
 }

@@ -14,7 +14,7 @@ class Loader
   public:
     Loader(ssize_t fd);
 
-    Loader(Loader &loader, ssize_t fd);
+    Loader(Loader &loader, ssize_t fd, UserProcess* child);
 
     ~Loader();
 

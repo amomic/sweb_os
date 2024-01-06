@@ -27,7 +27,14 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     wrapper_ = wrapper;
     loader_ = userProcess->getLoader();
 
-    size_t stack_ppn= PageManager::instance()->allocPPN();
+    ustl::map<size_t, bool> pages;
+
+    //4 to handle reserved stack pages
+    for(int i = 0; i < 4; i++)
+    {
+        uint32 posi = PageManager::instance()->allocPPN();
+        pages[posi] = false;
+    }
 
     this->setTID(tid);
 
@@ -38,8 +45,8 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     bool vpn_mapped = -1;
 
 
-
-    loader_->arch_memory_.arch_mem_lock.acquire();
+    IPT::instance()->ipt_lock_.acquire();
+    process_->arch_mem_lock_.acquire();
     stack_start =  (USER_BREAK - PAGE_SIZE * tid * STACK_SIZE);
     // UB FF
     // UB - 13
@@ -49,9 +56,17 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     // UB - 25
     size_t virtual_page = (stack_start/ PAGE_SIZE)-1;
     virtual_pages_.push_back(virtual_page);
-    vpn_mapped = loader_->arch_memory_.mapPage(virtual_page, stack_ppn , 1);
-    loader_->arch_memory_.arch_mem_lock.release();
-
+    vpn_mapped = loader_->arch_memory_.mapPage(virtual_page, &pages , 1);
+    process_->arch_mem_lock_.release();
+    IPT::instance()->ipt_lock_.release();
+    for(auto page : pages)
+    {
+        if(!pages.empty() && page.second == false ) {
+            page.second = true;
+            debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+            PageManager::instance()->freePPN(page.first);
+        }
+    }
     assert(vpn_mapped && "Virtual page for stack was already mapped - this should never happen");
     debug(USERTHREAD, "After VPN_MAPPED\n");
     ArchThreads::createUserRegisters(user_registers_, wrapper,

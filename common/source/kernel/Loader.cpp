@@ -17,15 +17,19 @@ Loader::Loader(ssize_t fd) :
 {
 }
 
-Loader::Loader(Loader& loader, ssize_t fd) :
-        arch_memory_(loader.arch_memory_),
+Loader::Loader(Loader& loader, ssize_t fd, UserProcess* child) :
+
+        arch_memory_(loader.arch_memory_, child),
         heap_mutex_("Heap lock"),
         fd_(fd),
         hdr_(0),
         phdrs_(),
         program_binary_lock_("Loader::program_binary_lock_"),
+
         userspace_debug_info_(0)
 {
+
+
     debug(LOADER, "In loader copy constructor!\n");
 }
 
@@ -45,7 +49,15 @@ void Loader::loadPage(pointer virtual_address)
   bool found_page_content = false;
   // get a new page for the mapping
     debug(SYSCALL, "here\n");
-  size_t ppn = PageManager::instance()->allocPPN();
+    ustl::map<size_t, bool> pages;
+
+    //4 to handle reserved stack pages
+    for(int i = 0; i < 4; i++)
+    {
+        uint32 pos = PageManager::instance()->allocPPN();
+        pages[pos] = false;
+    }
+  size_t ppn = pages.back().first;
 
     debug(SYSCALL, "14\n");
   program_binary_lock_.acquire();
@@ -66,7 +78,14 @@ void Loader::loadPage(pointer virtual_address)
         if(readFromBinary((char *)ArchMemory::getIdentAddressOfPPN(ppn) + virt_offs_on_page, bin_start_addr, bytes_to_load))
         {
           program_binary_lock_.release();
-          PageManager::instance()->freePPN(ppn);
+            for(auto page : pages)
+            {
+                if(page.second == false) {
+                    page.second = true;
+                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                    PageManager::instance()->freePPN(page.first);
+                }
+            }
           debug(LOADER, "ERROR! Some parts of the content could not be loaded from the binary.\n");
           Syscall::exit(999);
         }
@@ -83,25 +102,49 @@ void Loader::loadPage(pointer virtual_address)
 
   if(!found_page_content)
   {
-    PageManager::instance()->freePPN(ppn);
+      for(auto page : pages)
+      {
+          if(page.second == false) {
+              page.second = true;
+              debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+              PageManager::instance()->freePPN(page.first);
+          }
+      }
     debug(LOADER, "Loader::loadPage: ERROR! No section refers to the given address.\n");
     Syscall::exit(666);
   }
 
     debug(SYSCALL, "17\n");
-  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, ppn, true);
+  IPT::instance()->ipt_lock_.acquire();
+  arch_memory_.process_->arch_mem_lock_.acquire();
+  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, &pages, true);
+    arch_memory_.process_->arch_mem_lock_.release();
+
+    IPT::instance()->ipt_lock_.release();
+
   if (!page_mapped)
   {
     debug(LOADER, "Loader::loadPage: The page has been mapped by someone else.\n");
-    PageManager::instance()->freePPN(ppn);
+
   }
+
+
   debug(LOADER, "Loader::loadPage: Load request for address %p has been successfully finished.\n", (void*)virtual_address);
-    if(currentThread->loader_->arch_memory_.arch_mem_lock.isHeldBy(currentThread))
-        currentThread->loader_->arch_memory_.arch_mem_lock.release();
+    if(arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread))
+        arch_memory_.process_->arch_mem_lock_.release();
     if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
         currentThread->loader_->heap_mutex_.release();
     if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.release();
+
+    for(auto page : pages)
+    {
+        if(page.second == false) {
+            page.second = true;
+            debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+            PageManager::instance()->freePPN(page.first);
+        }
+    }
 }
 
 bool Loader::readFromBinary (char* buffer, l_off_t position, size_t length)

@@ -296,9 +296,9 @@ void Syscall::pthread_exit([[maybe_unused]]void *value)
     debug(SYSCALL, "line before kill in pexit");
 
     IPT::instance()->ipt_lock_.acquire();
-    current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.acquire();
+    current_thread->getProcess()->loader_->arch_memory_.process_->arch_mem_lock_.acquire();
     current_thread->getProcess()->unmapPage();
-    current_thread->getProcess()->loader_->arch_memory_.arch_mem_lock.release();
+    current_thread->getProcess()->loader_->arch_memory_.process_->arch_mem_lock_.release();
     IPT::instance()->ipt_lock_.release();
 
     current_thread->kill();
@@ -514,12 +514,33 @@ size_t Syscall::brk(size_t end_data_segment)
     {
         if (currentThread->loader_->vpns_of_heap_.at(iter) > end_data_segment)
         {
-            debug(SYSCALL, "SYSCALL::brk in if! \n");
+            currentThread->loader_->heap_mutex_.release();
 
-            currentThread->loader_->arch_memory_.arch_mem_lock.acquire();
-            currentThread->loader_->arch_memory_.unmapPage(currentThread->loader_->vpns_of_heap_.at(iter));
-            currentThread->loader_->arch_memory_.arch_mem_lock.release();
+            debug(SYSCALL, "SYSCALL::brk in if! \n");
+            ustl::map<size_t, bool> pages;
+
+            //4 to handle reserved stack pages
+            for(int i = 0; i < 4; i++)
+            {
+                uint32 pos = PageManager::instance()->allocPPN();
+                pages[pos] = false;
+            }
+            IPT::instance()->ipt_lock_.acquire();
+            currentThread->loader_->arch_memory_.process_->arch_mem_lock_.acquire();
+            currentThread->loader_->arch_memory_.unmapPage(currentThread->loader_->vpns_of_heap_.at(iter), &pages);
+            currentThread->loader_->arch_memory_.process_->arch_mem_lock_.release();
+            IPT::instance()->ipt_lock_.release();
             currentThread->loader_->vpns_of_heap_.erase(currentThread->loader_->vpns_of_heap_.begin() + iter);
+
+            for(auto page : pages)
+            {
+                if(!pages.empty() && page.second == false ) {
+                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                    PageManager::instance()->freePPN(page.first);
+                }
+            }
+            currentThread->loader_->heap_mutex_.acquire();
+
         }
     }
     currentThread->loader_->heap_mutex_.release();
