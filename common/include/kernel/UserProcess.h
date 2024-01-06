@@ -53,7 +53,7 @@ public:
     void CleanThreads(size_t thread);
     void unmapPage();
     void deleteExecThreads(UserThread* current_thread);
-    bool CheckStack(size_t pos);
+    bool CheckStack(size_t pos,  ustl::map<size_t, bool> *alloc_pages);
     size_t checkExecArgs(char *const *args);
 
     pid_t waitpid(pid_t pid, int *status, int options);

@@ -332,7 +332,7 @@ size_t SwapThread::randomPRA() {
         ppn_to_evict = ((ArchThreads::rdtsc() >> 1) % total_number_of_pages / 2) + total_number_of_pages / 2;
 
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
-        if (entry == IPT::instance()->ipt_.end()) {
+        if (entry == IPT::instance()->ipt_.end() || entry->second->type_ != PAGE) {
             debug(SWAP_THREAD, "\n random in if  \n");
             continue;
         } else {

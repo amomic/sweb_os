@@ -754,17 +754,10 @@ pid_t UserProcess::waitpid(pid_t pid, int *status, [[maybe_unused]] int options)
     }
 }
 
-bool UserProcess::CheckStack(size_t pos) {
+bool UserProcess::CheckStack(size_t pos,  ustl::map<size_t, bool> *alloc_pages) {
     auto thread = ((UserThread *) currentThread);
 
-    ustl::map<size_t, bool> pages;
 
-    //4 to handle reserved stack pages
-    for(int i = 0; i < 4; i++)
-    {
-        uint32 posi = PageManager::instance()->allocPPN();
-        pages[posi] = false;
-    }
     threads_lock_.acquire();
     for (auto it: threads_map_) {
         debug(USERPROCESS, "position %18zx\n", pos);
@@ -787,11 +780,9 @@ bool UserProcess::CheckStack(size_t pos) {
             if(!thread->loader_->arch_memory_.checkAddressValid(pos))
             {
                 threads_lock_.release();
-                IPT::instance()->ipt_lock_.acquire();
-                thread->getProcess()->arch_mem_lock_.acquire();
-                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, &pages, true);
-                thread->getProcess()->arch_mem_lock_.release();
-                IPT::instance()->ipt_lock_.release();
+
+                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, alloc_pages, true);
+
                 threads_lock_.acquire();
 
                 if (!mapped) {
@@ -805,14 +796,7 @@ bool UserProcess::CheckStack(size_t pos) {
     }
 
     threads_lock_.release();
-    for(auto page : pages)
-    {
-        if(!pages.empty() && page.second == false ) {
-            page.second = true;
-            debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
-            PageManager::instance()->freePPN(page.first);
-        }
-    }
+
     return false;
 }
 

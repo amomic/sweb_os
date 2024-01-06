@@ -90,7 +90,7 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
             return_value = fork();
             break;
         case sc_execv:
-            return_value = execv(reinterpret_cast<char *>(arg1), reinterpret_cast<char **>(arg2));
+            //return_value = execv(reinterpret_cast<char *>(arg1), reinterpret_cast<char **>(arg2));
             break;
         case sc_clock:
             return_value = clock();

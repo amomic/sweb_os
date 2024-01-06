@@ -79,14 +79,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
     }
 
     auto parent_ = static_cast<UserThread*>(currentThread);
-    ustl::map<size_t, bool> pages;
 
-    //4 to handle reserved stack pages
-    for(int i = 0; i < 4; i++)
-    {
-        uint32 pos = PageManager::instance()->allocPPN();
-        pages[pos] = false;
-    }
 
     debug(SYSCALL, "1\n");
 
@@ -95,6 +88,15 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
     if (checkPageFaultIsValid(address, user, present, switch_to_us, writing))
     {
         debug(SYSCALL, "3\n");
+
+        ustl::map<size_t, bool> pages;
+
+        //4 to handle reserved stack pages
+        for(int i = 0; i < 4; i++)
+        {
+            uint32 pos = PageManager::instance()->allocPPN();
+            pages[pos] = false;
+        }
         IPT::instance()->ipt_lock_.acquire();
         parent_->getProcess()->arch_mem_lock_.acquire();
         //race condition
@@ -106,8 +108,6 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             IPT::instance()->ipt_lock_.release();
             debug(SWAP_THREAD, "VPN: %zx \n",address );
             //assert(0 && "You need to swap this in \n");
-            SwapThread::instance()->WaitForSwapIn(address / PAGE_SIZE, m);
-
             for(auto page : pages)
             {
                 if(page.second == false) {
@@ -116,6 +116,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
                     PageManager::instance()->freePPN(page.first);
                 }
             }
+            SwapThread::instance()->WaitForSwapIn(address / PAGE_SIZE, m);
+
             return;
         }
 
@@ -180,8 +182,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
              currentThread->loader_->heap_mutex_.release();
 
 /*-------------------------------------------------------- HEAP ON DEMAND END!! ----------------------------------------------*/
-        parent_->getProcess()->arch_mem_lock_.release();
-        IPT::instance()->ipt_lock_.release();
+
         debug(USERPROCESS, "%18zx\n", address);
         debug(SYSCALL, "6\n");
         for(auto page : pages)
@@ -198,8 +199,10 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
             debug(SYSCALL, "7\n");
 
-            if (((UserThread *) currentThread)->process_->CheckStack(address))
+            if (((UserThread *) currentThread)->process_->CheckStack(address, &pages))
             {
+                parent_->getProcess()->arch_mem_lock_.release();
+                IPT::instance()->ipt_lock_.release();
                 debug(PAGEFAULT, "Page fault handling finished for Address: %18zx.\n", address);
                 for(auto page : pages)
                 {
@@ -212,6 +215,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
                 return;
             } else
             {
+                parent_->getProcess()->arch_mem_lock_.release();
+                IPT::instance()->ipt_lock_.release();
                 for(auto page : pages)
                 {
                     if(!pages.empty() && page.second == false ) {
@@ -237,8 +242,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         {
             debug(SYSCALL, "11\n");
 
-            if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
-                currentThread->loader_->heap_mutex_.release();
+            parent_->getProcess()->arch_mem_lock_.release();
+            IPT::instance()->ipt_lock_.release();
 
             for(auto page : pages)
             {
@@ -258,14 +263,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
   {
 
       debug(SYSCALL, "12\n");
-      for(auto page : pages)
-      {
-          if(page.second == false) {
-              page.second = true;
-              debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
-              PageManager::instance()->freePPN(page.first);
-          }
-      }
+
     // the page-fault seems to be faulty, print out the thread stack traces
     ArchThreads::printThreadRegisters(currentThread, true);
     currentThread->printBacktrace(true);

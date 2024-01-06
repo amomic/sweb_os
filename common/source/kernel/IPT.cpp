@@ -32,6 +32,9 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
 [[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type)
 {
   //  assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
+
+  if(ppn < 1008)
+      assert(0 && "Not possible!\n");
     assert(ppn <= PageManager::instance()->getTotalNumPages());
 
     debug(A_MEMORY, "prije ifa\n");
@@ -45,7 +48,7 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
     }
     debug(A_MEMORY, "poslije ifa\n");
     ipt_[ppn]->references_list_.push_back(memory);
-    ipt_[ppn]->arch_mem_ = memory;
+    //ipt_[ppn]->arch_mem_ = memory;
     ipt_[ppn]->virt_page_num_ = vpn;
     ipt_[ppn]->type_ = type;
     debug(A_MEMORY, "zavrsio\n");
@@ -60,11 +63,17 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
 
 void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 {
+    if(ipt_.find(ppn) == ipt_.end())
+        return;
     assert(ipt_.find(ppn) != ipt_.end() && "IPT does not have that PPN!");
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
 
     ipt_.at(ppn)->references_list_.remove(memory);
-
+    if(ipt_.at(ppn)->references_list_.empty())
+    {
+        delete ipt_[ppn];
+        ipt_.erase(ppn);
+    }
 }
 
 [[maybe_unused]] void IPT::deleteSwappedRef(size_t block_number[[maybe_unused]], ArchMemory *memory[[maybe_unused]])
@@ -83,8 +92,10 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 [[maybe_unused]] size_t IPT::getRefCount(size_t page_nr)
 {
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
+    debug(A_MEMORY, "Page_NR : %lu\n", page_nr);
     if(ipt_.find(page_nr) == ipt_.end())
         return 0;
+    assert(ipt_.find(page_nr) != ipt_.end() && "Entry should be in!\n");
     auto ret_val = ipt_.at(page_nr)->references_list_.size();
     return ret_val;
 }

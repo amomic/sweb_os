@@ -80,7 +80,7 @@ void Loader::loadPage(pointer virtual_address)
           program_binary_lock_.release();
             for(auto page : pages)
             {
-                if(page.second == false) {
+                if(!pages.empty() && page.second == false) {
                     page.second = true;
                     debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
                     PageManager::instance()->freePPN(page.first);
@@ -104,7 +104,7 @@ void Loader::loadPage(pointer virtual_address)
   {
       for(auto page : pages)
       {
-          if(page.second == false) {
+          if(!pages.empty() && page.second == false) {
               page.second = true;
               debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
               PageManager::instance()->freePPN(page.first);
@@ -139,7 +139,7 @@ void Loader::loadPage(pointer virtual_address)
 
     for(auto page : pages)
     {
-        if(page.second == false) {
+        if(!pages.empty() && page.second == false) {
             page.second = true;
             debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
             PageManager::instance()->freePPN(page.first);
