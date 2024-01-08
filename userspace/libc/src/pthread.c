@@ -141,7 +141,16 @@ int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex)
  */
 int pthread_spin_destroy(pthread_spinlock_t *lock)
 {
-  return -1;
+    if(lock->initialized!=1)
+        return -1;
+
+    if(lock->locked==1)
+        return -1;
+
+    lock->locked = -1;
+    lock->initialized = 0;
+
+    return 0;
 }
 
 /**
@@ -150,7 +159,14 @@ int pthread_spin_destroy(pthread_spinlock_t *lock)
  */
 int pthread_spin_init(pthread_spinlock_t *lock, int pshared)
 {
-  return -1;
+    if(lock->initialized)
+        return -1;
+
+    lock->initialized = 1;
+    lock->shared = pshared;
+    lock->locked = 0;
+
+    return 0;
 }
 
 /**
@@ -159,7 +175,19 @@ int pthread_spin_init(pthread_spinlock_t *lock, int pshared)
  */
 int pthread_spin_lock(pthread_spinlock_t *lock)
 {
-  return -1;
+    if(lock->initialized != 1)
+        return -1;
+
+    size_t value = 1;
+
+    do{
+        asm("xchg %0, %1"
+        : "=r" (value)
+        : "m" (lock->locked), "0" (value)
+        : "memory");
+    } while (value == 1 && !__syscall(sc_sched_yield, 0x0, 0x0, 0x0, 0x0, 0x0));
+
+    return value;
 }
 
 /**
@@ -168,7 +196,20 @@ int pthread_spin_lock(pthread_spinlock_t *lock)
  */
 int pthread_spin_trylock(pthread_spinlock_t *lock)
 {
-  return -1;
+    if (lock->initialized != 1)
+        return -1;
+
+    int value = 1;
+
+    asm("xchg %0, %1"
+            : "=r" (value)
+            : "m" (lock->locked), "0" (value)
+            : "memory");
+
+    if(value == 1)
+        return -1;
+
+    return 0;
 }
 
 /**
@@ -177,7 +218,14 @@ int pthread_spin_trylock(pthread_spinlock_t *lock)
  */
 int pthread_spin_unlock(pthread_spinlock_t *lock)
 {
-  return -1;
+    if(lock->locked != 1)
+        return -1;
+
+    if(lock->initialized != 1)
+        return -1;
+
+    lock->locked = 0;
+    return 0;
 }
 
 /**
