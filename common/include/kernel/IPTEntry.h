@@ -20,7 +20,8 @@ class IPTEntry {
     size_t virt_page_num_;
     PageType type_;
     uint64 swap_bit :1;
-
+    uint64 dirty :1;
+    size_t block = 0;
     IPTEntry(ArchMemory* mem, size_t vpn, PageType type, uint64 swap):
             references_list_(0),arch_mem_(mem), virt_page_num_(vpn), type_(type), swap_bit(swap){
         debug(A_MEMORY, "u iptentry bla \n");

@@ -12,6 +12,8 @@
 #include "BDManager.h"
 
 struct SwapRequest;
+
+enum PRA {RANDOM_PRA, SC_PRA, AGING_PRA};
 class SwapThread : public Thread {
     friend class UserThread;
 
@@ -38,17 +40,26 @@ public:
 
      bool schedulable() override;
     Mutex request_lock_;
-    Condition request_cond_;
 
     size_t WaitForSwapIn(size_t vpn, ArchMemoryMapping &m);
     Mutex disc_alloc_lock_;
+
+    PRA active_pra_ = RANDOM_PRA;
+
+    ustl::map<size_t, bool> sc_references;
+    ustl::map<size_t, size_t> aging_references;
+
+    void age();
 
 private:
     static SwapThread *instance_;
     bool reserveBlock(uint32 block, uint32 num);
 
+    size_t scPRA();
+
+    size_t aging_PRA();
 };
-struct SwapRequest{
+struct SwapRequest {
     size_t swap_type_;
     size_t ppn_;
     size_t vpn_;
@@ -56,7 +67,7 @@ struct SwapRequest{
     UserProcess *user_process;
     bool is_done = false;
     bool duplicate_ = false;
-
+    Condition request_cond_;
     [[maybe_unused]]void initDevice(){
 
         debug(SWAP_THREAD, "constructor of swap thread\n");
@@ -78,7 +89,7 @@ struct SwapRequest{
         debug(SWAP_THREAD, "ended the construction\n");
     }
     SwapRequest(size_t sw_type, size_t ppn, size_t vpn, size_t block_number, UserProcess* process ,[[maybe_unused]]Mutex* swap_lock_) :
-            swap_type_(sw_type), ppn_(ppn), vpn_(vpn), block_number_(block_number), user_process(process){
+            swap_type_(sw_type), ppn_(ppn), vpn_(vpn), block_number_(block_number), user_process(process),  request_cond_(&SwapThread::instance()->request_lock_, "Condition::request_cond_"){
         if(SwapThread::instance()->device_ == nullptr)
             initDevice();
     };

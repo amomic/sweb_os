@@ -60,6 +60,8 @@ public:
     void releasearchmemLocks();
 
 
+    void updateArchMem();
+
 private:
     int32 fd_;
     FileSystemInfo *working_dir_;

@@ -83,6 +83,9 @@ extern void *realloc(void *ptr, size_t size);
 
 extern void free(void *ptr);
 
+extern size_t get_dirty();
+extern size_t get_clean();
+
 #ifdef __cplusplus
 }
 #endif

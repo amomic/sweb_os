@@ -11,6 +11,8 @@ int main()
     pthread_create(&thread, NULL, NULL, NULL);
 
     printf("\n");
+
+
     size_t pid = fork();
     printf("fork1 is %zu\n", pid);
     for (int i = 0; i < 10000; ++i) {
@@ -34,6 +36,6 @@ int main()
     size_t pid2 = fork();
     printf("fork3 is %zu\n", pid2);
 
-    return 0;
+    pthread_exit(NULL);
 }
 

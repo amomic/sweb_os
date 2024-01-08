@@ -41,7 +41,7 @@ Loader::~Loader()
   hdr_ = nullptr;
 }
 
-void Loader::loadPage(pointer virtual_address)
+void Loader::loadPage(pointer virtual_address, ustl::map<size_t, bool> *pMap)
 {
   debug(LOADER, "Loader:loadPage: Request to load the page for address %p.\n", (void*)virtual_address);
   const pointer virt_page_start_addr = virtual_address & ~(PAGE_SIZE - 1);
@@ -49,15 +49,8 @@ void Loader::loadPage(pointer virtual_address)
   bool found_page_content = false;
   // get a new page for the mapping
     debug(SYSCALL, "here\n");
-    ustl::map<size_t, bool> pages;
 
-    //4 to handle reserved stack pages
-    for(int i = 0; i < 4; i++)
-    {
-        uint32 pos = PageManager::instance()->allocPPN();
-        pages[pos] = false;
-    }
-  size_t ppn = pages.back().first;
+  size_t ppn = pMap->back().first;
 
     debug(SYSCALL, "14\n");
   program_binary_lock_.acquire();
@@ -78,9 +71,9 @@ void Loader::loadPage(pointer virtual_address)
         if(readFromBinary((char *)ArchMemory::getIdentAddressOfPPN(ppn) + virt_offs_on_page, bin_start_addr, bytes_to_load))
         {
           program_binary_lock_.release();
-            for(auto page : pages)
+            for(auto page : *pMap)
             {
-                if(!pages.empty() && page.second == false) {
+                if(!pMap->empty() && page.second == false) {
                     page.second = true;
                     debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
                     PageManager::instance()->freePPN(page.first);
@@ -102,9 +95,9 @@ void Loader::loadPage(pointer virtual_address)
 
   if(!found_page_content)
   {
-      for(auto page : pages)
+      for(auto page : *pMap)
       {
-          if(!pages.empty() && page.second == false) {
+          if(!pMap->empty() && page.second == false) {
               page.second = true;
               debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
               PageManager::instance()->freePPN(page.first);
@@ -117,7 +110,7 @@ void Loader::loadPage(pointer virtual_address)
     debug(SYSCALL, "17\n");
   IPT::instance()->ipt_lock_.acquire();
   arch_memory_.process_->arch_mem_lock_.acquire();
-  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, &pages, true);
+  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, pMap, true);
     arch_memory_.process_->arch_mem_lock_.release();
 
     IPT::instance()->ipt_lock_.release();
@@ -137,9 +130,9 @@ void Loader::loadPage(pointer virtual_address)
     if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.release();
 
-    for(auto page : pages)
+    for(auto page : *pMap)
     {
-        if(!pages.empty() && page.second == false) {
+        if(!pMap->empty() && page.second == false) {
             page.second = true;
             debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
             PageManager::instance()->freePPN(page.first);

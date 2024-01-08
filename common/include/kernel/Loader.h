@@ -29,7 +29,7 @@ class Loader
      * Gets a free physical page, copies the contents of the binary to it, and then maps it.
      * @param virtual_address virtual address where to find the page to load
      */
-    void loadPage(pointer virtual_address);
+    void loadPage(pointer virtual_address, ustl::map<size_t, bool> *pMap);
 
     Stabs2DebugInfo const* getDebugInfos() const;
 

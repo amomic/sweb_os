@@ -118,6 +118,8 @@ class Thread
 
     ThreadState getState() const;
 
+    TYPE type_;
+
   private:
     Thread(Thread const &src);
     Thread &operator=(Thread const &src);

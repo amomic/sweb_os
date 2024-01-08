@@ -33,7 +33,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     for(int i = 0; i < 4; i++)
     {
         uint32 posi = PageManager::instance()->allocPPN();
-        pages[posi] = false;
+        pages.push_back(ustl::pair(posi, false));
     }
 
     this->setTID(tid);

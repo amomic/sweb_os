@@ -28,6 +28,16 @@ int main()
         j += 1024;
     }
 
+    j = 0;
+    for (size_t i = 0; i < ITERATIONS; i++)
+    {
+        assert(j < ITERATIONS * 4096 * 4);
+        printf("Reading: index %ld value is %d\n", i, some_var[j]);
+        assert(some_var[j] == i);
+        j += 1024;
+    }
+    printf("Dirty Swaps: %lu \n", get_dirty());
+    printf("Clean Swaps; %lu \n", get_clean());
     printf("\nGOING OUT\n");
 
     return 0;

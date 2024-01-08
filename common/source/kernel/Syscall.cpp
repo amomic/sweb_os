@@ -107,6 +107,12 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_sbrk:
             return_value = sbrk(arg1);
             break;
+        case sc_dirty:
+            return_value = get_dirty();
+            break;
+        case sc_clean:
+            return_value = get_clean();
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -295,11 +301,9 @@ void Syscall::pthread_exit([[maybe_unused]]void *value)
     current_thread->getProcess()->threads_lock_.release();
     debug(SYSCALL, "line before kill in pexit");
 
-    IPT::instance()->ipt_lock_.acquire();
-    current_thread->getProcess()->loader_->arch_memory_.process_->arch_mem_lock_.acquire();
+
     current_thread->getProcess()->unmapPage();
-    current_thread->getProcess()->loader_->arch_memory_.process_->arch_mem_lock_.release();
-    IPT::instance()->ipt_lock_.release();
+
 
     current_thread->kill();
 }
@@ -523,7 +527,7 @@ size_t Syscall::brk(size_t end_data_segment)
             for(int i = 0; i < 4; i++)
             {
                 uint32 pos = PageManager::instance()->allocPPN();
-                pages[pos] = false;
+                pages.push_back(ustl::pair(pos, false));
             }
             IPT::instance()->ipt_lock_.acquire();
             currentThread->loader_->arch_memory_.process_->arch_mem_lock_.acquire();
@@ -571,5 +575,13 @@ size_t Syscall::sbrk(size_t increment)
     return old_break;
 }
 
+size_t Syscall::get_dirty() {
+    return IPT::instance()->dirty_swaps_;
+}
+
+
+size_t Syscall::get_clean() {
+    return IPT::instance()->clean_swaps_;
+}
 
 
