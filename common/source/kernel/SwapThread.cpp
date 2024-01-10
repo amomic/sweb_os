@@ -388,15 +388,7 @@ size_t SwapThread::WaitForSwapIn(size_t vpn, ArchMemoryMapping& m){
 
 bool SwapThread::schedulable() {
 
-    if(swap_request_map_.empty())
-    {
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-    //return (getState() == Running);
+  return (getState() == Running);
 }
 
 size_t SwapThread::randomPRA() {
