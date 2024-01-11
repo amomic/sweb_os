@@ -8,13 +8,12 @@ intptr_t global[10*SIZE];
 
 int main()
 {
-    fork();
+
     for(size_t i = 0; i < 10*SIZE;i+= 1024)
     {
         global[i] = (intptr_t)&global[i];
     }
 
-    //fork();
 
     for(size_t i = 0; i < 10*SIZE; i+= 1024)
     {

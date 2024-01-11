@@ -324,6 +324,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
 size_t SwapThread::addCond([[maybe_unused]] size_t found) {
 
+
     if(currentThread == this)
     {
         auto request = new SwapRequest(Thread::SWAP_TYPE::SWAP_OUT, 0, 0, 0, 0, &SwapThread::instance()->swap_lock_);

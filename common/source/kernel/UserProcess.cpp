@@ -161,9 +161,10 @@ UserThread* UserProcess::createThread(size_t* thread, [[maybe_unused]]size_t *at
     process_ = this;
 
     debug(USERPROCESS, "Calling UserThread constructor!\n");
+    threads_lock_.release();
     UserThread *new_thread = new UserThread(filename_, fs_info_, terminal_number_, process_, start_routine, wrapper,threads_counter_for_id_, (void*)argc, args);
     assert(new_thread && "Failed to create new thread\n");
-
+    threads_lock_.acquire();
     Scheduler::instance()->addNewThread(new_thread);
     threads_alive_++;
     threads_map_.push_back(ustl::make_pair(threads_counter_for_id_,new_thread));
