@@ -260,12 +260,12 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
     char* iAddress = reinterpret_cast<char *>(ArchMemory::getIdentAddressOfPPN(new_page));
 
-    debug(SWAP_THREAD, "after iaddress  ppn in swapin\n");
+    //debug(SWAP_THREAD, "after iaddress  ppn in swapin\n");
 
     size_t the_offset = request->block_number_;
 
     auto swap_entry = IPT::instance()->sipt_.find(the_offset);
-    debug(SWAP_THREAD, "after swap entry\n");
+   // debug(SWAP_THREAD, "after swap entry\n");
     if(swap_entry == IPT::instance()->sipt_.end()){
         debug(SWAP_THREAD, "Page was already swapped!\n");
         auto m = request->user_process->getLoader()->arch_memory_.resolveMapping(request->vpn_);
@@ -285,7 +285,7 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
         //bool is_mapped = request->user_process->getLoader()->arch_memory_.mapPage(request->vpn_, new_page, 1);
         // Lock this S
-        debug(SWAP_THREAD, "before for loop\n");
+       // debug(SWAP_THREAD, "before for loop\n");
         for(auto memory : swap_entry->second->references_list_) {
             ArchMemoryMapping m = memory->resolveMapping(memory->page_map_level_4_,request->vpn_);
 
@@ -294,14 +294,14 @@ size_t SwapThread::SwapOut(SwapRequest* request)
             PT_entry[m.pti].page_ppn = new_page;
             PT_entry[m.pti].present = 1;
         }
-        debug(SWAP_THREAD, "after for loop\n");
+       // debug(SWAP_THREAD, "after for loop\n");
 
 
 
         IPT::instance()->ipt_[new_page] = swap_entry->second;
         IPT::instance()->sipt_.erase(the_offset);
 
-        debug(SWAP_THREAD, "after erase\n");
+        //debug(SWAP_THREAD, "after erase\n");
 
         disc_alloc_lock_.acquire();
         if(the_offset < lowest_unreserved_page_){
@@ -333,30 +333,27 @@ size_t SwapThread::addCond([[maybe_unused]] size_t found) {
         return ppn;
     }
 
-    debug(SYSCALL, "in add cond before request\n");
+   // debug(SYSCALL, "in add cond before request\n");
     auto request = new SwapRequest(Thread::SWAP_TYPE::SWAP_OUT, 0, 0, 0, 0, &SwapThread::instance()->swap_lock_);
     //debug(SWAPPING, "Out of memory, swap out request added\n");
-    debug(SYSCALL, "in add cond after request\n");
+   // debug(SYSCALL, "in add cond after request\n");
     //condition
-    debug(SYSCALL, "ughhhhhhhhhhhhhhhhhhn");
-
-
-
-    debug(SYSCALL, "in add cond before aquire\n");
+    //debug(SYSCALL, "ughhhhhhhhhhhhhhhhhhn");
+    //debug(SYSCALL, "in add cond before aquire\n");
     request_lock_.acquire();
 
     swap_lock_.acquire();
-    debug(SYSCALL, "in add cond after aquire\n");
+ //   debug(SYSCALL, "in add cond after aquire\n");
     swap_request_map_.push_back(request);
     //currentThread->loader_->arch_memory_.releasearchmemLocks();
 
-    debug(SYSCALL, "in add cond after push\n");
+   // debug(SYSCALL, "in add cond after push\n");
     swap_wait.signal();
     swap_lock_.release();
     if(request->is_done == false)
         request->request_cond_.wait();
     request_lock_.release();
-    debug(SWAP_THREAD, "cond added going to swap out");
+  //  debug(SWAP_THREAD, "cond added going to swap out");
     //SwapOut(request);
 
 
@@ -400,12 +397,12 @@ size_t SwapThread::randomPRA() {
     size_t total_number_of_pages = PageManager::instance()->getTotalNumPages();
 
     while (!ppn_to_evict_found) {
-        debug(SWAP_THREAD, "random in while loop\n \n");
+        //debug(SWAP_THREAD, "random in while loop\n \n");
         ppn_to_evict = ((ArchThreads::rdtsc() >> 1) % total_number_of_pages / 2) + total_number_of_pages / 2;
 
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
         if (entry == IPT::instance()->ipt_.end() || entry->second->type_ != PAGE) {
-            debug(SWAP_THREAD, "\n random in if  \n");
+         //   debug(SWAP_THREAD, "\n random in if  \n");
             continue;
         } else {
             ppn_to_evict_found = 1;
@@ -413,7 +410,7 @@ size_t SwapThread::randomPRA() {
 
     }
 
-    debug(SWAP_THREAD, "return in random");
+   // debug(SWAP_THREAD, "return in random");
     return ppn_to_evict;
 }
 
@@ -436,7 +433,7 @@ size_t SwapThread::scPRA() {
     size_t ppn;
     while(!found) {
         auto it = sc_references.begin();
-        debug(SWAP_THREAD , "Here 1\n");
+        //debug(SWAP_THREAD , "Here 1\n");
 
         for(  ; it != sc_references.end(); it++)
         {
