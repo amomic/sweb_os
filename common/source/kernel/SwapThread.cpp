@@ -48,6 +48,8 @@ void SwapThread::Run() {
 
         if(swap_request_map_.empty() ) {
             request_lock_.release();
+            if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+                IPT::instance()->ipt_lock_.release();
             swap_wait.wait();
             swap_lock_.release();
             continue;
@@ -95,8 +97,9 @@ void SwapThread::Run() {
 
 size_t SwapThread::SwapOut(SwapRequest* request)
 {
-    IPT::instance()->ipt_lock_.acquire();
-    debug(SWAP_THREAD, "before pra\n \n");
+    if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+        IPT::instance()->ipt_lock_.acquire();
+   // debug(SWAP_THREAD, "before pra\n \n");
 
     size_t rand_ppn;
     if(active_pra_ == RANDOM_PRA) {
@@ -107,9 +110,9 @@ size_t SwapThread::SwapOut(SwapRequest* request)
         rand_ppn = aging_PRA();
     }
     uint32 p = 0;
-    debug(SWAP_THREAD, "after pra\n \n");
+  //  debug(SWAP_THREAD, "after pra\n \n");
     uint32 found = 0;
-    debug(SWAP_THREAD, "after block num\n \n");
+  //  debug(SWAP_THREAD, "after block num\n \n");
     [[maybe_unused]]size_t number_of_free_blocks_ = number_of_blocks_;
     //kprintf("%zu",number_of_blocks_);
 
@@ -250,13 +253,28 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 
 [[maybe_unused]] bool SwapThread::SwapIn(SwapRequest *request)
 {
+
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     size_t new_page = PageManager::instance()->allocPPN();
     debug(SWAP_THREAD, "after alloc ppn in swapin\n");
     assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
-    if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
-        IPT::instance()->ipt_lock_.release();
-    IPT::instance()->ipt_lock_.acquire();
+    if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+        IPT::instance()->ipt_lock_.acquire();
+
+    for(auto entry = IPT::instance()->ipt_.begin(); entry != IPT::instance()->ipt_.end(); entry++) {
+        if( entry->second->virt_page_num_  == request->vpn_ ) {
+            for( auto e : entry->second->references_list_)
+            {
+                if(e->process_ == request->user_process)
+                {
+                    request->ppn_ = entry->first;
+                    PageManager::instance()->freePPN(new_page);
+                    return -1;
+                }
+            }
+
+        }
+    }
 
     char* iAddress = reinterpret_cast<char *>(ArchMemory::getIdentAddressOfPPN(new_page));
 

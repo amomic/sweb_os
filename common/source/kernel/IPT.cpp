@@ -81,7 +81,6 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 [[maybe_unused]] void IPT::deleteSwappedRef(size_t block_number[[maybe_unused]], ArchMemory *memory[[maybe_unused]])
 {
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
-
     sipt_.at(block_number)->references_list_.remove(memory);
     if(sipt_.at(block_number)->references_list_.empty())
     {

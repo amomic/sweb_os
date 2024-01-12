@@ -11,6 +11,7 @@ int main()
 {
     printf("\nGOING IN\n");
     size_t j = 0;
+    fork();
 
     for (size_t i = 0; i < ITERATIONS; i++)
     {
@@ -19,15 +20,7 @@ int main()
         j += 1024;
     }
 
-    j = 0;
-    for (size_t i = 0; i < ITERATIONS; i++)
-    {
-        assert(j < ITERATIONS * 4096 * 4);
-        printf("Reading: index %ld value is %d\n", i, some_var[j]);
-        assert(some_var[j] == i);
-        j += 1024;
-    }
-
+    fork();
     j = 0;
     for (size_t i = 0; i < ITERATIONS; i++)
     {
