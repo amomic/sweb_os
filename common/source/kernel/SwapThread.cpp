@@ -254,10 +254,8 @@ size_t SwapThread::SwapOut(SwapRequest* request)
 [[maybe_unused]] bool SwapThread::SwapIn(SwapRequest *request)
 {
 
-    assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     size_t new_page = PageManager::instance()->allocPPN();
     debug(SWAP_THREAD, "after alloc ppn in swapin\n");
-    assert(!IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     if(!IPT::instance()->ipt_lock_.isHeldBy(currentThread))
         IPT::instance()->ipt_lock_.acquire();
 
