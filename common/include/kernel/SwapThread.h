@@ -51,6 +51,18 @@ public:
 
     void age();
 
+    const ustl::map<size_t, bool> &getScReferences() const;
+
+    void setScReferences(const ustl::map<size_t, bool> &scReferences);
+
+    const ustl::map<size_t, size_t> &getAgingReferences() const;
+
+    void setAgingReferences(const ustl::map<size_t, size_t> &agingReferences);
+
+    static SwapThread *getInstance();
+
+    static void setInstance(SwapThread *instance);
+
 private:
     static SwapThread *instance_;
     bool reserveBlock(uint32 block, uint32 num);
