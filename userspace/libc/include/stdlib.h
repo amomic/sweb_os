@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "pthread.h"
 #include "types.h"
 
 #ifdef __cplusplus
@@ -37,7 +38,6 @@ extern "C" {
  *
  */
 #define NULL 0
-
 
 /**
  * parses the given string and returns its value as integer
@@ -82,6 +82,8 @@ extern void *calloc(size_t nmemb, size_t size);
 extern void *realloc(void *ptr, size_t size);
 
 extern void free(void *ptr);
+
+extern void checkInitAndLock(pthread_spinlock_t *spinlock);
 
 #ifdef __cplusplus
 }
