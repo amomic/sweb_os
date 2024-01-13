@@ -37,14 +37,14 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
       assert(0 && "Not possible!\n");
     assert(ppn <= PageManager::instance()->getTotalNumPages());
 
-    debug(A_MEMORY, "prije ifa\n");
+   // debug(A_MEMORY, "prije ifa\n");
     if(ipt_.find(ppn) == ipt_.end())
     {
-        debug(A_MEMORY, "u ifu\n");
+       // debug(A_MEMORY, "u ifu\n");
         //ipt_[ppn] = new IPTEntry;
         auto entr = new IPTEntry(memory,vpn,type,1);
         ipt_.insert(ustl::pair<size_t, IPTEntry*>(ppn,entr));
-        debug(A_MEMORY, "poslije new iptentry\n");
+       // debug(A_MEMORY, "poslije new iptentry\n");
     }
     ipt_[ppn]->references_list_.push_back(memory);
     //ipt_[ppn]->arch_mem_ = memory;
@@ -53,7 +53,7 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
     ipt_[ppn]->dirty = 0;
     if(SwapThread::instance()->active_pra_ == SC_PRA)
         SwapThread::instance()->sc_references.push_back(ustl::pair(ppn, true));
-    debug(A_MEMORY, "zavrsio\n");
+   // debug(A_MEMORY, "zavrsio\n");
 }
 
 [[maybe_unused]] void IPT::addSwappedRef(size_t block_number[[maybe_unused]], ArchMemory *memory[[maybe_unused]])
@@ -92,7 +92,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 [[maybe_unused]] size_t IPT::getRefCount(size_t page_nr)
 {
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
-    debug(A_MEMORY, "Page_NR : %lu\n", page_nr);
+    //debug(A_MEMORY, "Page_NR : %lu\n", page_nr);
     if(ipt_.find(page_nr) == ipt_.end())
         return 0;
     assert(ipt_.find(page_nr) != ipt_.end() && "Entry should be in!\n");
@@ -114,7 +114,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 [[maybe_unused]] size_t IPT::swapOutRef(size_t ppn[[maybe_unused]], size_t block_number[[maybe_unused]])
 {
     //ScopeLock lock(ipt_lock_);
-    debug(SWAP_THREAD, "PPN THATS SWAPPED IS %zu\n", ppn);
+    debug(SWAP_THREAD, "PPN THATS SWAPPED out IS %zu\n", ppn);
     sipt_[block_number] = ipt_.at(ppn);
     sipt_[block_number]->block = block_number;
     ipt_.erase(ppn);
@@ -123,6 +123,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 
 [[maybe_unused]] size_t IPT::swapInRef(size_t page_nr[[maybe_unused]], size_t block_number[[maybe_unused]])
 {
+    debug(SWAP_THREAD, "PPN THATS SWAPPED in IS %zu\n", page_nr);
     ipt_[page_nr] = sipt_.at(block_number);
     sipt_.erase(block_number);
     return 0;
@@ -142,7 +143,7 @@ IPTEntry* IPT::GetIPT(size_t ppn)
         }
 
     }
-    debug(SWAP_THREAD , "Here \n");
+    //debug(SWAP_THREAD , "Here \n");
 
     return nullptr;
 }
