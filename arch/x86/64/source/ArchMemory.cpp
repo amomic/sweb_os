@@ -133,7 +133,7 @@ ArchMemory::ArchMemory(ArchMemory &parent, UserProcess* child) : process_(child)
                                   child_pt[pti].page_ppn = parent_pt[pti].page_ppn;
                                   debug(A_MEMORY, "Child PPN: %d\n", child_pt[pti].page_ppn);
                                   debug(A_MEMORY, "Parent PPN: %d\n", parent_pt[pti].page_ppn);
-                                  IPT::instance()->addReference(parent_pt[pti].page_ppn, this,vpn, PAGE);
+                                  IPT::instance()->addReference(parent_pt[pti].page_ppn, this,vpn, PAGE, parent_pt[pti].dirty);
 ;                                  debug(A_MEMORY, "[Fork] PT assigned to child.\n");
                               }
                               else if(parent_pt[pti].swapped)
@@ -201,8 +201,8 @@ bool ArchMemory::unmapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_p
 
 
     if (IPT::instance()->getRefCount(m.pt[m.pti].page_ppn) == 1) {
-        PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
         IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
+        PageManager::instance()->freePPN(m.pt[m.pti].page_ppn);
     } else
     {
         IPT::instance()->deleteReference(m.pt[m.pti].page_ppn, this);
@@ -255,8 +255,8 @@ void ArchMemory::insert(pointer map_ptr, uint64 index, uint64 ppn, uint64 bzero,
 {
   assert(map_ptr & ~0xFFFFF00000000000ULL);
   T* map = (T*) map_ptr;
-  debug(A_MEMORY, "%s: page %p index %zx ppn %zx user_access %zx size %zx\n", __PRETTY_FUNCTION__, map, index, ppn,
-        user_access, size);
+  debug(A_MEMORY, "%s: page %p index %zx ppn %zx user_access %zx size %zx, writable %lu\n", __PRETTY_FUNCTION__, map, index, ppn,
+        user_access, size, writeable);
   if (bzero)
   {
     memset((void*) getIdentAddressOfPPN(ppn), 0, PAGE_SIZE);
@@ -296,6 +296,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
       debug(SYSCALL, "18\n");
     m.pdpt_ppn = alloc_pages->front().first;
     insert<PageMapLevel4Entry>((pointer) m.pml4, m.pml4i, m.pdpt_ppn, 1, 0, 1, 1);
+    alloc_pages->begin()->second = true;
       alloc_pages->erase(alloc_pages->begin());
       IPT::instance()->addReference(m.pdpt_ppn, this, -1, PDPT);
 
@@ -306,6 +307,8 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
   {
     m.pd_ppn = alloc_pages->front().first;
     insert<PageDirPointerTablePageDirEntry>(getIdentAddressOfPPN(m.pdpt_ppn), m.pdpti, m.pd_ppn, 1, 0, 1, 1);
+      alloc_pages->begin()->second = true;
+
       alloc_pages->erase(alloc_pages->begin());
       IPT::instance()->addReference(m.pd_ppn, this, -2, PAGE_DIR);
       m = resolveMapping(virtual_page);
@@ -316,6 +319,8 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
   {
     m.pt_ppn = alloc_pages->front().first;
     insert<PageDirPageTableEntry>(getIdentAddressOfPPN(m.pd_ppn), m.pdi, m.pt_ppn, 1, 0, 1, 1);
+      alloc_pages->begin()->second = true;
+
       alloc_pages->erase(alloc_pages->begin());
       IPT::instance()->addReference(m.pt_ppn, this, -3, PAGE_TABLE);
       m = resolveMapping(virtual_page);
@@ -332,8 +337,10 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
 
       insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, alloc_pages->back().first, 0, 0, user_access, 1);
       debug(SYSCALL, "19\n");
+    //assert(m.pt[m.pti].dirty && "Is it dirty?");
+    IPT::instance()->addReference(alloc_pages->back().first, this, virtual_page, PAGE, m.pt[m.pti].dirty);
+      alloc_pages->back().second = true;
 
-    IPT::instance()->addReference(alloc_pages->back().first, this, virtual_page, PAGE);
       alloc_pages->pop_back();
     /*
     PageManager::instance()->cow_ref_map_lock.acquire();
@@ -469,10 +476,10 @@ ArchMemory::~ArchMemory()
       }*/
     }
   }
-  PageManager::instance()->freePPN(page_map_level_4_);
 
-  process_->arch_mem_lock_.release();
-  IPT::instance()->ipt_lock_.release();
+    process_->arch_mem_lock_.release();
+    IPT::instance()->ipt_lock_.release();
+    PageManager::instance()->freePPN(page_map_level_4_);
 
 }
 
@@ -910,7 +917,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 
 
 
-            IPT::instance()->addReference(cow_copy_page, this,virt_addresss/PAGE_SIZE, PAGE);
+            IPT::instance()->addReference(cow_copy_page, this,virt_addresss/PAGE_SIZE, PAGE, mapping.pt[mapping.pti].dirty);
 
             //Copy page
 
@@ -934,4 +941,32 @@ void ArchMemory::releasearchmemLocks()
 {
     if(process_->arch_mem_lock_.isHeldBy(currentThread))
         process_->arch_mem_lock_.release();
+}
+
+void ArchMemory::updateArchMem() {
+    PageMapLevel4Entry* pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
+    for(int pml4i = 0; pml4i < PAGE_MAP_LEVEL_4_ENTRIES / 2; pml4i++) {
+        if(pml4[pml4i].present && pml4[pml4i].accessed) {
+            PageDirPointerTableEntry * pdpt = (PageDirPointerTableEntry*) getIdentAddressOfPPN(pml4[pml4i].page_ppn);
+            for(int pdpti = 0; pdpti < PAGE_DIR_POINTER_TABLE_ENTRIES; pdpti++) {
+                if(pdpt[pdpti].pd.present && pdpt[pdpti].pd.accessed) {
+                    PageDirEntry * pd = (PageDirEntry*) getIdentAddressOfPPN(pdpt[pdpti].pd.page_ppn);
+                    for(int pdi = 0; pdi < PAGE_DIR_ENTRIES; pdi++) {
+                        if(pd[pdi].pt.present && pd[pdi].pt.accessed) {
+                            PageTableEntry * pt = (PageTableEntry*) getIdentAddressOfPPN(pd[pdi].pt.page_ppn);
+                            for(int pti = 0; pti < PAGE_TABLE_ENTRIES; pti++) {
+                                if(pt[pti].present && pt[pti].accessed) {
+                                    pt[pti].accessed = 0;
+                                    if(SwapThread::instance()->active_pra_ == SC_PRA)
+                                        SwapThread::instance()->sc_references.find(pt[pti].page_ppn)->second = true;
+                                    else
+                                        SwapThread::instance()->aging_references.find(pt[pti].page_ppn)->second = 0x1000000;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

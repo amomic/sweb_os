@@ -35,6 +35,10 @@ public:
    */
   bool isFree();
 
+    size_t getLock() const;
+
+    void setLock(size_t lock);
+
 private:
   /**
    * The basic spinlock is just a variable which is

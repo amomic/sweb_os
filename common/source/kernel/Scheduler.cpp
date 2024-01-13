@@ -63,7 +63,11 @@ void Scheduler::schedule()
                 }
             }
 //            Scheduler::instance()->sleep_lock_.release();
-
+            if(currentThread != NULL && currentThread->type_ == Thread::USER_THREAD && currentThread->loader_ != nullptr) {
+                if(SwapThread::instance()->active_pra_ == SC_PRA || SwapThread::instance()->active_pra_ == AGING_PRA) {
+                    ((UserThread*)currentThread)->getProcess()->updateArchMem();
+                }
+            }
             currentThread = *it;
             break;
         }
@@ -203,7 +207,10 @@ size_t Scheduler::getTicks()
 void Scheduler::incTicks()
 {
     ++ticks_;
-
+    if(ticks_ % 20 == 0 && SwapThread::instance()->active_pra_ == AGING_PRA)
+    {
+        SwapThread::instance()->age();
+    }
     if(!clock_f)
     {
         calculateClockFrequency();

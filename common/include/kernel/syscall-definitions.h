@@ -13,6 +13,8 @@
 #define sc_execv 7
 #define sc_lseek 19
 #define sc_pseudols 43
+#define sc_dirty 98
+#define sc_clean 99
 #define sc_outline 105
 #define sc_sched_yield 158
 #define sc_createprocess 191

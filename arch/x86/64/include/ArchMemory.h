@@ -112,7 +112,9 @@ class ArchMemory
     void cowPageCopy(uint64 virt_address, ustl::map<size_t, bool> *alloc_pages , bool page_copy = true);
     void releasearchmemLocks();
 
-  private:
+    void updateArchMem();
+
+private:
     /**
      * Adds a PML4Entry, PDPTEntry, PDEntry or PTEntry to the given PML4, PDPT, PD or PT respectively.
      * (In other words, adds the reference to a new page table to a given page directory, for example.)

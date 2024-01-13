@@ -29,7 +29,7 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
 
 
 
-[[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type)
+[[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type, [[maybe_unused]] size_t dirty)
 {
   //  assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
 
@@ -46,11 +46,13 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
         ipt_.insert(ustl::pair<size_t, IPTEntry*>(ppn,entr));
         debug(A_MEMORY, "poslije new iptentry\n");
     }
-    debug(A_MEMORY, "poslije ifa\n");
     ipt_[ppn]->references_list_.push_back(memory);
     //ipt_[ppn]->arch_mem_ = memory;
     ipt_[ppn]->virt_page_num_ = vpn;
     ipt_[ppn]->type_ = type;
+    ipt_[ppn]->dirty = 0;
+    if(SwapThread::instance()->active_pra_ == SC_PRA)
+        SwapThread::instance()->sc_references.push_back(ustl::pair(ppn, true));
     debug(A_MEMORY, "zavrsio\n");
 }
 
@@ -79,9 +81,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
 [[maybe_unused]] void IPT::deleteSwappedRef(size_t block_number[[maybe_unused]], ArchMemory *memory[[maybe_unused]])
 {
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
-
     sipt_.at(block_number)->references_list_.remove(memory);
-
     if(sipt_.at(block_number)->references_list_.empty())
     {
         delete sipt_[block_number];
@@ -116,6 +116,7 @@ void IPT::deleteReference(size_t ppn, ArchMemory *memory)
     //ScopeLock lock(ipt_lock_);
     debug(SWAP_THREAD, "PPN THATS SWAPPED IS %zu\n", ppn);
     sipt_[block_number] = ipt_.at(ppn);
+    sipt_[block_number]->block = block_number;
     ipt_.erase(ppn);
     return 0;
 }
@@ -141,6 +142,7 @@ IPTEntry* IPT::GetIPT(size_t ppn)
         }
 
     }
+    debug(SWAP_THREAD , "Here \n");
 
     return nullptr;
 }

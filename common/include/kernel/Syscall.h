@@ -38,5 +38,9 @@ class Syscall
 
     static size_t brk(size_t end_data_segment);
     static size_t sbrk(size_t increment);
+
+    static size_t get_dirty();
+
+    static size_t get_clean();
 };
 

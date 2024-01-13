@@ -95,7 +95,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
         for(int i = 0; i < 4; i++)
         {
             uint32 pos = PageManager::instance()->allocPPN();
-            pages[pos] = false;
+            pages.push_back(ustl::pair(pos, false));
         }
         IPT::instance()->ipt_lock_.acquire();
         parent_->getProcess()->arch_mem_lock_.acquire();
@@ -185,14 +185,6 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
         debug(USERPROCESS, "%18zx\n", address);
         debug(SYSCALL, "6\n");
-        for(auto page : pages)
-        {
-            if(page.second == false) {
-                page.second = true;
-                debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
-                PageManager::instance()->freePPN(page.first);
-            }
-        }
 
         if (address > STACK_POS)
         {
@@ -245,15 +237,8 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             parent_->getProcess()->arch_mem_lock_.release();
             IPT::instance()->ipt_lock_.release();
 
-            for(auto page : pages)
-            {
-                if(!pages.empty() && page.second == false ) {
-                    page.second = true;
-                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
-                    PageManager::instance()->freePPN(page.first);
-                }
-            }
-            currentThread->loader_->loadPage(address);
+
+            currentThread->loader_->loadPage(address, &pages);
 
 
         }

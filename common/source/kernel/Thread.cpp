@@ -38,6 +38,7 @@ Thread::Thread(FileSystemInfo *working_dir, ustl::string name, Thread::TYPE type
   ArchThreads::createKernelRegisters(kernel_registers_, (void*) (type == Thread::USER_THREAD ? 0 : threadStartHack), getKernelStackStartPointer());
   kernel_stack_[2047] = STACK_CANARY;
   kernel_stack_[0] = STACK_CANARY;
+  type_ = type;
 }
 
 Thread::~Thread()

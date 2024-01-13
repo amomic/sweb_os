@@ -11,6 +11,7 @@ int main()
 {
     printf("\nGOING IN\n");
     size_t j = 0;
+    fork();
 
     for (size_t i = 0; i < ITERATIONS; i++)
     {
@@ -19,6 +20,7 @@ int main()
         j += 1024;
     }
 
+    fork();
     j = 0;
     for (size_t i = 0; i < ITERATIONS; i++)
     {
@@ -27,7 +29,8 @@ int main()
         assert(some_var[j] == i);
         j += 1024;
     }
-
+    printf("Dirty Swaps: %lu \n", get_dirty());
+    printf("Clean Swaps; %lu \n", get_clean());
     printf("\nGOING OUT\n");
 
     return 0;

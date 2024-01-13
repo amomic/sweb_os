@@ -20,5 +20,8 @@ int main()
 
     printf("%p\n", d);
 
+    int * x = (int*)d;
+    *x = 15;
+    printf("%d", *x);
     return 0;
 }

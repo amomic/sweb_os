@@ -20,7 +20,7 @@ public:
 
     Mutex ipt_lock_;
 
-    [[maybe_unused]] void addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type);
+    [[maybe_unused]] void addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type, size_t dirty = 0);
 
     [[maybe_unused]]  void addSwappedRef(size_t block_number, ArchMemory *memory);
 
@@ -40,6 +40,8 @@ public:
 
     ustl::map<size_t, IPTEntry*> ipt_;
     ustl::map<size_t, IPTEntry*> sipt_;
+    size_t dirty_swaps_;
+    size_t clean_swaps_;
 };
 
 

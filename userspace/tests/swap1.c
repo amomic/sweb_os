@@ -4,7 +4,7 @@
 #include "unistd.h"
 #define MB 1024ULL * 1024ULL
 
-intptr_t global[7*MB];
+intptr_t global[MB];
 
 int main()
 {
@@ -12,14 +12,14 @@ int main()
 
     fork();
 
-    for(size_t i = 0; i < 7*MB; i+= 7)
+    for(size_t i = 0; i < MB; i+= 7)
     {
 
             global[i] = (intptr_t)&global[i];
     }
 
 
-    for(size_t i = 0; i < 7*MB; i+=7)
+    for(size_t i = 0; i < MB; i+=7)
     {
 
             printf(" global id is: %ld, and we got %ld\n", global[i], (intptr_t)&global[i] );
