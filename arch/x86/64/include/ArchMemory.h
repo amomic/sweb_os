@@ -110,7 +110,7 @@ class ArchMemory
 
     bool isCowSet(uint64 virt_address);
     void cowPageCopy(uint64 virt_address, ustl::map<size_t, bool> *alloc_pages , bool page_copy = true);
-    void releasearchmemLocks();
+
 
     void updateArchMem();
 

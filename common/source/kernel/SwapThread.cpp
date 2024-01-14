@@ -496,27 +496,3 @@ void SwapThread::age() {
         it.second = it.second >> 1;
     }
 }
-
-const ustl::map<size_t, bool> &SwapThread::getScReferences() const {
-    return sc_references;
-}
-
-void SwapThread::setScReferences(const ustl::map<size_t, bool> &scReferences) {
-    sc_references = scReferences;
-}
-
-const ustl::map<size_t, size_t> &SwapThread::getAgingReferences() const {
-    return aging_references;
-}
-
-void SwapThread::setAgingReferences(const ustl::map<size_t, size_t> &agingReferences) {
-    aging_references = agingReferences;
-}
-
-SwapThread *SwapThread::getInstance() {
-    return instance_;
-}
-
-void SwapThread::setInstance(SwapThread *instance) {
-    instance_ = instance;
-}

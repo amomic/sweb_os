@@ -2,6 +2,9 @@
 #include "pthread.h"
 #include "unistd.h"
 #include "stdio.h"
+#include "stdlib.h"
+#include "sys/syscall.h"
+#include "../../../common/include/kernel/syscall-definitions.h"
 #include "assert.h"
 
 struct block_node {
@@ -141,3 +144,17 @@ void checkInitAndLock(pthread_spinlock_t *spinlock){
     pthread_spin_init(spinlock, 0);
     pthread_spin_lock(spinlock);
 }
+
+
+extern size_t get_dirty()
+{
+    return __syscall(sc_dirty, 0x00, 0x00, 0x00, 0x00, 0x00);
+
+}
+
+extern size_t get_clean()
+{
+    return __syscall(sc_clean, 0x00, 0x00, 0x00, 0x00, 0x00);
+
+}
+

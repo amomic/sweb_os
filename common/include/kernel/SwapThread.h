@@ -51,18 +51,6 @@ public:
 
     void age();
 
-    const ustl::map<size_t, bool> &getScReferences() const;
-
-    void setScReferences(const ustl::map<size_t, bool> &scReferences);
-
-    const ustl::map<size_t, size_t> &getAgingReferences() const;
-
-    void setAgingReferences(const ustl::map<size_t, size_t> &agingReferences);
-
-    static SwapThread *getInstance();
-
-    static void setInstance(SwapThread *instance);
-
 private:
     static SwapThread *instance_;
     bool reserveBlock(uint32 block, uint32 num);
@@ -84,21 +72,21 @@ struct SwapRequest {
 
         debug(SWAP_THREAD, "constructor of swap thread\n");
         SwapThread::instance()->pages_number_ = PageManager::instance()->getTotalNumPages();
-        debug(SWAP_THREAD, "ended the construction\n");
+      //  debug(SWAP_THREAD, "ended the construction\n");
 
         SwapThread::instance()->device_ = BDManager::getInstance()->getDeviceByNumber(3);
-        debug(SWAP_THREAD, "ended the construction\n");
+     //   debug(SWAP_THREAD, "ended the construction\n");
 
         SwapThread::instance()->device_->setBlockSize(PAGE_SIZE);
-        debug(SWAP_THREAD, "ended the construction\n");
+     //   debug(SWAP_THREAD, "ended the construction\n");
 
         SwapThread::instance()->bitmap_ = new Bitmap(SwapThread::instance()->device_->getNumBlocks() - SwapThread::instance()->pages_number_);
         SwapThread::instance()->block_ = 1;
         SwapThread::instance()->lowest_unreserved_page_ = 0;
-        debug(SWAP_THREAD, "ended the construction\n");
+       // debug(SWAP_THREAD, "ended the construction\n");
 
         SwapThread::instance()->number_of_blocks_ = SwapThread::instance()->device_->getNumBlocks();
-        debug(SWAP_THREAD, "ended the construction\n");
+      //  debug(SWAP_THREAD, "ended the construction\n");
     }
     SwapRequest(size_t sw_type, size_t ppn, size_t vpn, size_t block_number, UserProcess* process ,[[maybe_unused]]Mutex* swap_lock_) :
             swap_type_(sw_type), ppn_(ppn), vpn_(vpn), block_number_(block_number), user_process(process),  request_cond_(&SwapThread::instance()->request_lock_, "Condition::request_cond_"){

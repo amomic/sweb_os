@@ -116,11 +116,3 @@ void SpinLock::release(pointer called_by)
   held_by_ = 0;
   lock_ = 0;
 }
-
-size_t SpinLock::getLock() const {
-    return lock_;
-}
-
-void SpinLock::setLock(size_t lock) {
-    lock_ = lock;
-}

@@ -181,7 +181,7 @@ bool ArchMemory::unmapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_p
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread));
     ArchMemoryMapping m = resolveMapping(virtual_page);
 
-    debug(A_MEMORY, "Here Problem??\n");
+   // debug(A_MEMORY, "Here Problem??\n");
 
     if (m.pt && m.pt[m.pti].present == 0 && m.pt[m.pti].swapped == 1) {
         IPT::instance()->deleteSwappedRef(m.pt[m.pti].page_ppn, this);
@@ -189,7 +189,7 @@ bool ArchMemory::unmapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_p
         return true;
     }
     m = resolveMapping(virtual_page);
-    debug(A_MEMORY, "Do i get here?\n");
+  //  debug(A_MEMORY, "Do i get here?\n");
     cowPageCopy(virtual_page, alloc_pages, false);
 
     m = resolveMapping(virtual_page);
@@ -274,7 +274,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
     assert(process_->arch_mem_lock_.isHeldBy(currentThread));
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread));
   debug(A_MEMORY, "%zx %zx %zx %zx\n", page_map_level_4_, virtual_page, alloc_pages->back().first, user_access);
-    debug(SYSCALL, "18\n");
+   // debug(SYSCALL, "18\n");
   ArchMemoryMapping m = resolveMapping(page_map_level_4_, virtual_page);
   assert((m.page_size == 0) || (m.page_size == PAGE_SIZE));
 
@@ -293,7 +293,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
   if (m.pdpt_ppn == 0)
   {
 
-      debug(SYSCALL, "18\n");
+      //debug(SYSCALL, "18\n");
     m.pdpt_ppn = alloc_pages->front().first;
     insert<PageMapLevel4Entry>((pointer) m.pml4, m.pml4i, m.pdpt_ppn, 1, 0, 1, 1);
     alloc_pages->begin()->second = true;
@@ -336,7 +336,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
       //m = resolveMapping(page_map_level_4_, virtual_page);
 
       insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, alloc_pages->back().first, 0, 0, user_access, 1);
-      debug(SYSCALL, "19\n");
+     // debug(SYSCALL, "19\n");
     //assert(m.pt[m.pti].dirty && "Is it dirty?");
     IPT::instance()->addReference(alloc_pages->back().first, this, virtual_page, PAGE, m.pt[m.pti].dirty);
       alloc_pages->back().second = true;
@@ -713,7 +713,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
 
     //auto iterator = alloc_pages->begin();
-    debug(A_MEMORY, "Here\n");
+   // debug(A_MEMORY, "Here\n");
 
     if(!(mapping.pml4 && mapping.pml4[mapping.pml4i].present))
         return;
@@ -869,7 +869,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
         }
     }
-    debug(A_MEMORY, "Here\n");
+   // debug(A_MEMORY, "Here\n");
 
 
 
@@ -884,7 +884,6 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
         debug(A_MEMORY, "[COW] Page marked as cow and will be copied!\n");
 
         debug(A_MEMORY, "[COW] Cow called in process with PID: %zu\n ",ProcessRegistry::instance()->process_count_);
-
 
         if(mapping.pt[mapping.pti].swapped == 1)
         {
@@ -931,17 +930,12 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 
         }
     }
-    debug(A_MEMORY, "Here\n");
+    //debug(A_MEMORY, "Here\n");
 
 
 
 }
 
-void ArchMemory::releasearchmemLocks()
-{
-    if(process_->arch_mem_lock_.isHeldBy(currentThread))
-        process_->arch_mem_lock_.release();
-}
 
 void ArchMemory::updateArchMem() {
     PageMapLevel4Entry* pml4 = (PageMapLevel4Entry*) getIdentAddressOfPPN(page_map_level_4_);
