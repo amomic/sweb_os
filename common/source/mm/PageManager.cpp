@@ -196,7 +196,7 @@ uint32 PageManager::allocPPN(uint32 page_size)
 {
   uint32 p;
   uint32 found = 0;
-    debug(SYSCALL, "now\n");
+    //debug(SYSCALL, "now\n");
   assert((page_size % PAGE_SIZE) == 0);
 
   lock_.acquire();
@@ -208,18 +208,18 @@ uint32 PageManager::allocPPN(uint32 page_size)
     if (reservePages(p, page_size / PAGE_SIZE))
       found = p;
   }
-    debug(SYSCALL, "now1\n");
+    //debug(SYSCALL, "now1\n");
   while ((lowest_unreserved_page_ < number_of_pages_) && page_usage_table_->getBit(lowest_unreserved_page_))
     ++lowest_unreserved_page_;
 
   lock_.release();
 
-    debug(SYSCALL, "now2\n");
+    //debug(SYSCALL, "now2\n");
   if (found == 0)
   {
-      debug(SYSCALL, "now3\n");
+     // debug(SYSCALL, "now3\n");
      found = SwapThread::instance()->addCond(found);
-      debug(SYSCALL, "now4\n");
+     // debug(SYSCALL, "now4\n");
       memset((void*)ArchMemory::getIdentAddressOfPPN(found), 0, page_size);
       return found;
   }

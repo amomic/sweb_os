@@ -713,7 +713,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
     ArchMemoryMapping mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
 
     //auto iterator = alloc_pages->begin();
-    debug(A_MEMORY, "Here\n");
+  //  debug(A_MEMORY, "Here\n");
 
     if(!(mapping.pml4 && mapping.pml4[mapping.pml4i].present))
         return;
@@ -869,7 +869,7 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
             mapping = resolveMapping(page_map_level_4_, virt_addresss / PAGE_SIZE);
         }
     }
-    debug(A_MEMORY, "Here\n");
+    //debug(A_MEMORY, "Here\n");
 
 
 
