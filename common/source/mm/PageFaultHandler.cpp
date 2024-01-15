@@ -308,7 +308,6 @@ bool PageFaultHandler::handleZeroPageDeduplication(ArchMemoryMapping* m, bool wr
     debug(PAGEFAULT, "\n\n\n In handle zero page deduplication!\n\n\n");
     if(m->pt && m->pt[m->pti].page_ppn == PageManager::instance()->zeroPPN)
     {
-        debug(PAGEFAULT, "\n\n\n First if of handle zero page!\n\n\n");
         return true;
     }
 

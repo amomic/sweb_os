@@ -737,6 +737,24 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 
     if(!(mapping.pml4 && mapping.pml4[mapping.pml4i].present))
         return;
+
+    //----------------------ZeroDeduplication----------------------------
+    if(mapping.pt && mapping.pt[mapping.pti].page_ppn == PageManager::instance()->zeroPPN)
+    {
+        debug(A_MEMORY, "\n COW detected ZeroPPN! \n");
+
+
+        debug(A_MEMORY, "\n COW ZeroPPN else! \n");
+        mapping.pt[mapping.pti].present = 0;
+        mapping.pt[mapping.pti].page_ppn = PageManager::instance()->allocPPN();
+        mapping.pt[mapping.pti].cow = 0;
+        mapping.pt[mapping.pti].writeable = 1;
+        mapping.pt[mapping.pti].present = 1;
+
+        PageManager::instance()->zero_cnt--;
+
+        return;
+    }
 //----------------------------------------PML4--------------------------------------------------------------------------
     if(mapping.pml4 && mapping.pml4[mapping.pml4i].present && mapping.pml4[mapping.pml4i].cow)
     {
