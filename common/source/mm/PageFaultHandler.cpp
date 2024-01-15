@@ -305,14 +305,16 @@ void PageFaultHandler::enterPageFault(size_t address, bool user,
 
 bool PageFaultHandler::handleZeroPageDeduplication(ArchMemoryMapping* m, bool write_access)
 {
+    debug(PAGEFAULT, "\n\n\n In handle zero page deduplication!\n\n\n");
     if(m->pt && m->pt[m->pti].page_ppn == PageManager::instance()->zeroPPN)
     {
+        debug(PAGEFAULT, "\n\n\n First if of handle zero page!\n\n\n");
         return true;
     }
 
     if(m->pt && m->page_ppn == 0 && !write_access)
     {
-        debug(PAGEFAULT, "Zero page deduplication started!\n");
+        debug(PAGEFAULT, "\n\n\nZero page deduplication started!\n\n\n");
 
         m->pt[m->pti].present = 0;
         m->pt[m->pti].page_ppn = PageManager::instance()->zeroPPN;

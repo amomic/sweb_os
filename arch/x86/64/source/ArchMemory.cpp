@@ -331,9 +331,10 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
   //--------------zerodedup-----------------------------
 
     (void)write_access;
-
+    debug(A_MEMORY, "\n\n\nPrije arch mem ifa!\n\n\n");
     if(m.page_ppn == 0 && m.pt[m.pti].swapped == 0 && PageFaultHandler::handleZeroPageDeduplication(&m, write_access))
     {
+        debug(A_MEMORY, "\n\n\nUso u arch mem if!\n\n\n");
         m = resolveMapping(page_map_level_4_, virtual_page);
 
         insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, PageManager::instance()->zeroPPN, 0, 0, user_access, 0);
