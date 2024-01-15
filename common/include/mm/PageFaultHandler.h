@@ -1,6 +1,7 @@
 #pragma once
 
 #include "types.h"
+#include "ArchMemory.h"
 
 class PageFaultHandler
 {
@@ -48,4 +49,6 @@ public:
   static void enterPageFault(size_t address, bool user,
                              bool present, bool writing,
                              bool fetch);
+
+  static bool handleZeroPageDeduplication(ArchMemoryMapping* m, bool write_access);
 };

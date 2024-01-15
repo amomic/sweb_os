@@ -10,6 +10,7 @@
 #include "ProcessRegistry.h"
 #include "IPT.h"
 #include "SwapThread.h"
+#include "PageFaultHandler.h"
 
 PageMapLevel4Entry kernel_page_map_level_4[PAGE_MAP_LEVEL_4_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTER_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -269,7 +270,7 @@ void ArchMemory::insert(pointer map_ptr, uint64 index, uint64 ppn, uint64 bzero,
   map[index].present = 1;
 }
 
-bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access)
+bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access, uint64 write_access)
 {
     assert(process_->arch_mem_lock_.isHeldBy(currentThread));
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread));
@@ -326,6 +327,24 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
       m = resolveMapping(virtual_page);
 
   }
+
+  //--------------zerodedup-----------------------------
+
+    (void)write_access;
+
+    if(m.page_ppn == 0 && m.pt[m.pti].swapped == 0 && PageFaultHandler::handleZeroPageDeduplication(&m, write_access))
+    {
+        m = resolveMapping(page_map_level_4_, virtual_page);
+
+        insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, PageManager::instance()->zeroPPN, 0, 0, user_access, 0);
+
+        //clean the ppn entries, from IPT or somewhere?
+        //TODO - check this
+        return true;
+    }
+
+
+  //-------------endzerodedup---------------------------
 
   if (m.page_ppn == 0)
   {
