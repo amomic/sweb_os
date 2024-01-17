@@ -42,6 +42,26 @@ public:
     ustl::map<size_t, IPTEntry*> sipt_;
     size_t dirty_swaps_;
     size_t clean_swaps_;
+
+    const ustl::map<size_t, IPTEntry *> &getIpt() const;
+
+    void setIpt(const ustl::map<size_t, IPTEntry *> &ipt);
+
+    const ustl::map<size_t, IPTEntry *> &getSipt() const;
+
+    void setSipt(const ustl::map<size_t, IPTEntry *> &sipt);
+
+    size_t getDirtySwaps() const;
+
+    void setDirtySwaps(size_t dirtySwaps);
+
+    size_t getCleanSwaps() const;
+
+    void setCleanSwaps(size_t cleanSwaps);
+
+    const Mutex &getIptLock() const;
+
+    void setIptLock(const Mutex &iptLock);
 };
 
 
