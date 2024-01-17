@@ -188,6 +188,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
 
         if (address > STACK_POS)
         {
+
             debug(SYSCALL, "7\n");
 
             if (((UserThread *) currentThread)->process_->CheckStack(address, &pages))
