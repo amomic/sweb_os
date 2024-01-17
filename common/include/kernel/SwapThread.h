@@ -51,30 +51,6 @@ public:
 
     void age();
 
-    size_t getPagesNumber() const;
-
-    void setPagesNumber(size_t pagesNumber);
-
-    Bitmap *getBitmap() const;
-
-    void setBitmap(Bitmap *bitmap);
-
-    BDVirtualDevice *getDevice() const;
-
-    void setDevice(BDVirtualDevice *device);
-
-    size_t getBlock() const;
-
-    void setBlock(size_t block);
-
-    const ustl::vector<SwapRequest *> &getSwapRequestMap() const;
-
-    void setSwapRequestMap(const ustl::vector<SwapRequest *> &swapRequestMap);
-
-    const Mutex &getSwapLock() const;
-
-    void setSwapLock(const Mutex &swapLock);
-
 private:
     static SwapThread *instance_;
     bool reserveBlock(uint32 block, uint32 num);
