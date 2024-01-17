@@ -56,7 +56,7 @@ UserThread::UserThread(ustl::string filename, FileSystemInfo *fs_info, uint32 te
     // UB - 25
     size_t virtual_page = (stack_start/ PAGE_SIZE)-1;
     virtual_pages_.push_back(virtual_page);
-    vpn_mapped = loader_->arch_memory_.mapPage(virtual_page, &pages , 1);
+    vpn_mapped = loader_->arch_memory_.mapPage(virtual_page, &pages , 1, false);
     process_->arch_mem_lock_.release();
     IPT::instance()->ipt_lock_.release();
     for(auto page : pages)

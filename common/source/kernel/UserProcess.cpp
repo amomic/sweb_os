@@ -562,7 +562,7 @@ void UserProcess::setupArguments(Loader* new_loader, size_t args_num, char* cons
     new_loader->arch_memory_.process_->arch_mem_lock_.acquire();
     uint64 virtual_page = 0;
 
-    bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, &pages, 1);
+    bool vpn_map = new_loader->arch_memory_.mapPage(virtual_page, &pages, 1, false);
     new_loader->arch_memory_.process_->arch_mem_lock_.release();
     for(auto page : pages)
     {
@@ -765,7 +765,7 @@ bool UserProcess::CheckStack(size_t pos,  ustl::map<size_t, bool> *alloc_pages) 
             {
                 threads_lock_.release();
 
-                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, alloc_pages, true);
+                bool mapped = it.second->loader_->arch_memory_.mapPage(pos / PAGE_SIZE, alloc_pages, true, false);
 
                 threads_lock_.acquire();
 
