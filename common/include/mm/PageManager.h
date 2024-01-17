@@ -60,7 +60,13 @@ class PageManager
     ustl::map<uint64 , size_t>::iterator iterator_cow_ref_map;
     //ustl::atomic<size_t> ref_count = 0;
 
-  private:
+    //zero page deduplication
+    uint64 zeroPPN;
+    size_t zero_cnt = 0;
+
+    size_t getZeroCount();
+
+private:
     bool reservePages(uint32 ppn, uint32 num = 1);
 
     PageManager(PageManager const&);

@@ -64,7 +64,11 @@ void Console::handleKey(uint32 key)
       Scheduler::instance()->printThreadList();
       break;
 
-    case '\b':
+    case KEY_F7:
+      kprintfd("---------------------------Zero Pages Count: %ld --------------------------------\n", PageManager::instance()->getZeroCount());
+      break;
+
+      case '\b':
       terminals_[active_terminal_]->backspace();
       break;
   }
