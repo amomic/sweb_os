@@ -146,4 +146,3 @@ IPTEntry* IPT::GetIPT(size_t ppn)
     return nullptr;
 }
 
-c
