@@ -496,3 +496,51 @@ void SwapThread::age() {
         it.second = it.second >> 1;
     }
 }
+
+size_t SwapThread::getPagesNumber() const {
+    return pages_number_;
+}
+
+void SwapThread::setPagesNumber(size_t pagesNumber) {
+    pages_number_ = pagesNumber;
+}
+
+Bitmap *SwapThread::getBitmap() const {
+    return bitmap_;
+}
+
+void SwapThread::setBitmap(Bitmap *bitmap) {
+    bitmap_ = bitmap;
+}
+
+BDVirtualDevice *SwapThread::getDevice() const {
+    return device_;
+}
+
+void SwapThread::setDevice(BDVirtualDevice *device) {
+    device_ = device;
+}
+
+size_t SwapThread::getBlock() const {
+    return block_;
+}
+
+void SwapThread::setBlock(size_t block) {
+    block_ = block;
+}
+
+const ustl::vector<SwapRequest *> &SwapThread::getSwapRequestMap() const {
+    return swap_request_map_;
+}
+
+void SwapThread::setSwapRequestMap(const ustl::vector<SwapRequest *> &swapRequestMap) {
+    swap_request_map_ = swapRequestMap;
+}
+
+const Mutex &SwapThread::getSwapLock() const {
+    return swap_lock_;
+}
+
+void SwapThread::setSwapLock(const Mutex &swapLock) {
+    swap_lock_ = swapLock;
+}
