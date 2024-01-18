@@ -143,7 +143,6 @@ IPTEntry* IPT::GetIPT(size_t ppn)
         }
 
     }
-    //debug(SWAP_THREAD , "Here \n");
-
     return nullptr;
 }
+
