@@ -111,6 +111,7 @@ void Loader::loadPage(pointer virtual_address, ustl::map<size_t, bool> *pMap)
   IPT::instance()->ipt_lock_.acquire();
   arch_memory_.process_->arch_mem_lock_.acquire();
     bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, pMap, true);
+    //  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, pMap, true, true);
     arch_memory_.process_->arch_mem_lock_.release();
 
     IPT::instance()->ipt_lock_.release();

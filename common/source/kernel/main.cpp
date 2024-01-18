@@ -116,6 +116,10 @@ extern "C" void startup()
   Scheduler::instance()->addNewThread(new ProcessRegistry(new FileSystemInfo(*default_working_dir), user_progs /*see user_progs.h*/));
   Scheduler::instance()->printThreadList();
 
+    //ZeroPPN
+    //PageManager::instance()->zeroPPN = PageManager::instance()->allocPPN();
+
+
     kprintf("Now enabling Interrupts...\n");
   system_state = RUNNING;
 

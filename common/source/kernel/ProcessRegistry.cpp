@@ -90,6 +90,12 @@ void ProcessRegistry::processExit()
   counter_lock_.acquire();
   if (--progs_running_ == 0)
       all_processes_killed_.signal();
+  /*
+    {
+      PageManager::instance()->freePPN(PageManager::instance()->zeroPPN);
+      all_processes_killed_.signal();
+     }
+   */
 
   counter_lock_.release();
 }
