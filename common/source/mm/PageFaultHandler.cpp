@@ -158,7 +158,7 @@ inline void PageFaultHandler::handlePageFault(size_t address, bool user,
             currentThread->loader_->heap_mutex_.release();
 
             // No locks?
-            bool is_mapped = pUserThread->getProcess()->loader_->arch_memory_.mapPage(vpn, &pages, 1, 1);
+            bool is_mapped = pUserThread->getProcess()->loader_->arch_memory_.mapPage(vpn, &pages, 1);
             parent_->getProcess()->arch_mem_lock_.release();
             IPT::instance()->ipt_lock_.release();
 //            currentThread->loader_->arch_memory_.arch_mem_lock.release();
@@ -303,7 +303,7 @@ void PageFaultHandler::enterPageFault(size_t address, bool user,
     currentThreadRegisters = currentThread->user_registers_;
 }
 
-bool PageFaultHandler::handleZeroPageDeduplication(ArchMemoryMapping* m, bool write_access)
+[[maybe_unused]]bool PageFaultHandler::handleZeroPageDeduplication(ArchMemoryMapping* m, bool write_access)
 {
     debug(PAGEFAULT, "\n\n\n In handle zero page deduplication!\n\n\n");
     if(m->pt && m->pt[m->pti].page_ppn == PageManager::instance()->zeroPPN)

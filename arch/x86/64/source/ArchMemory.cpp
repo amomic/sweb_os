@@ -270,7 +270,7 @@ void ArchMemory::insert(pointer map_ptr, uint64 index, uint64 ppn, uint64 bzero,
   map[index].present = 1;
 }
 
-bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access, uint64 write_access)
+bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access)
 {
     assert(process_->arch_mem_lock_.isHeldBy(currentThread));
     assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread));
@@ -329,7 +329,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
   }
 
     //--------------zerodedup-----------------------------
-
+    /*
     (void)write_access;
     debug(A_MEMORY, "\n\n\nPrije arch mem ifa!\n\n\n");
     if(m.page_ppn == 0 && m.pt[m.pti].swapped == 0 && PageFaultHandler::handleZeroPageDeduplication(&m, write_access))
@@ -343,7 +343,7 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
         //TODO - check this
         return true;
     }
-
+    */
 
     //-------------endzerodedup---------------------------
 

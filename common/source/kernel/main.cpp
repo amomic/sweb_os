@@ -117,7 +117,7 @@ extern "C" void startup()
   Scheduler::instance()->printThreadList();
 
   //ZeroPPN
-  PageManager::instance()->zeroPPN = PageManager::instance()->allocPPN();
+  //PageManager::instance()->zeroPPN = PageManager::instance()->allocPPN();
 
 
     kprintf("Now enabling Interrupts...\n");
