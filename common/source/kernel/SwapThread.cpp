@@ -416,11 +416,12 @@ size_t SwapThread::randomPRA() {
         //debug(SWAP_THREAD, "random in while loop\n \n");
         ppn_to_evict = ((ArchThreads::rdtsc() >> 1) % total_number_of_pages / 2) + total_number_of_pages / 2;
 
+        /*
         if(ppn_to_evict == PageManager::instance()->zeroPPN)
         {
             continue;
         }
-
+        */
         auto entry = IPT::instance()->ipt_.find(ppn_to_evict);
         if (entry == IPT::instance()->ipt_.end() || entry->second->type_ != PAGE) {
          //   debug(SWAP_THREAD, "\n random in if  \n");
@@ -477,12 +478,12 @@ size_t SwapThread::scPRA() {
                 it->second = false;
             }
             //debug(SWAP_THREAD , "Here 4\n");
-
+            /*
             if(ppn == PageManager::instance()->zeroPPN)
             {
                 continue;
             }
-
+            */
         }
     }
     debug(SWAP_THREAD, "Found a page\n");
@@ -498,11 +499,12 @@ size_t SwapThread::aging_PRA() {
         {
             least_used = it.second;
 
+            /*
             if(it.first != PageManager::instance()->zeroPPN)
             {
                 ppn = it.first;
             }
-
+            */
         }
 
     }
