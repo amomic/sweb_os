@@ -302,29 +302,3 @@ void PageFaultHandler::enterPageFault(size_t address, bool user,
   if (currentThread->switch_to_userspace_)
     currentThreadRegisters = currentThread->user_registers_;
 }
-
-[[maybe_unused]]bool PageFaultHandler::handleZeroPageDeduplication(ArchMemoryMapping* m, bool write_access)
-{
-    debug(PAGEFAULT, "\n\n\n In handle zero page deduplication!\n\n\n");
-    if(m->pt && m->pt[m->pti].page_ppn == PageManager::instance()->zeroPPN)
-    {
-        return true;
-    }
-
-    if(m->pt && m->page_ppn == 0 && !write_access)
-    {
-        debug(PAGEFAULT, "\n\n\nZero page deduplication started!\n\n\n");
-
-        m->pt[m->pti].present = 0;
-        m->pt[m->pti].page_ppn = PageManager::instance()->zeroPPN;
-        m->pt[m->pti].writeable = 0;
-        m->pt[m->pti].cow = 1;
-        m->pt[m->pti].present = 1;
-
-        PageManager::instance()->zero_cnt++;
-
-        return true;
-    }
-
-    return false;
-}

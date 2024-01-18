@@ -49,7 +49,6 @@ public:
     ustl::map<size_t, bool> sc_references;
     ustl::map<size_t, size_t> aging_references;
 
-
     void age();
 
 private:

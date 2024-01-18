@@ -111,9 +111,6 @@ Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_
         case sc_clean:
             return_value = get_clean();
             break;
-        case sc_dbg_swout:
-//            return_value = forceSwap();
-            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -530,35 +527,6 @@ size_t Syscall::get_dirty() {
 
 size_t Syscall::get_clean() {
     return IPT::instance()->clean_swaps_;
-}
-
-size_t Syscall::forceSwap() {
-    auto request = new SwapRequest(Thread::SWAP_TYPE::SWAP_OUT, 0, 0, 0, 0, &SwapThread::instance()->swap_lock_);
-
-//    SwapThread::instance()->swap_request_map_.pop_back();
-    SwapThread::instance()->swap_lock_.release();
-    SwapThread::instance()->request_lock_.release();
-
-    SwapThread::instance()->SwapOut(request);
-    SwapThread::instance()->request_lock_.acquire();
-
-    request->is_done = true;
-    request->request_cond_.signal();
-    SwapThread::instance()->request_lock_.release();
-    kprintf("Kurac");
-    return 0;
-}
-
-void Syscall::suspend() {
-
-////    IPT *instance = IPT::instance_;
-////    instance->ipt_lock_.acquire();
-////    for (size_t iter = 0; iter < instance->ipt_.size(); iter++) {
-////    }
-////
-////    instance->ipt_lock_.release();
-
-
 }
 
 

@@ -10,7 +10,6 @@
 #include "ProcessRegistry.h"
 #include "IPT.h"
 #include "SwapThread.h"
-#include "PageFaultHandler.h"
 
 PageMapLevel4Entry kernel_page_map_level_4[PAGE_MAP_LEVEL_4_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
 PageDirPointerTableEntry kernel_page_directory_pointer_table[2 * PAGE_DIR_POINTER_TABLE_ENTRIES] __attribute__((aligned(PAGE_SIZE)));
@@ -327,25 +326,6 @@ bool ArchMemory::mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pag
       m = resolveMapping(virtual_page);
 
   }
-
-    //--------------zerodedup-----------------------------
-    /*
-    (void)write_access;
-    debug(A_MEMORY, "\n\n\nPrije arch mem ifa!\n\n\n");
-    if(m.page_ppn == 0 && m.pt[m.pti].swapped == 0 && PageFaultHandler::handleZeroPageDeduplication(&m, write_access))
-    {
-        debug(A_MEMORY, "\n\n\nUso u arch mem if!\n\n\n");
-        m = resolveMapping(page_map_level_4_, virtual_page);
-
-        insert<PageTableEntry>(getIdentAddressOfPPN(m.pt_ppn), m.pti, PageManager::instance()->zeroPPN, 0, 0, user_access, 0);
-
-        //clean the ppn entries, from IPT or somewhere?
-        //TODO - check this
-        return true;
-    }
-    */
-
-    //-------------endzerodedup---------------------------
 
     if (m.page_ppn == 0)
   {
@@ -737,24 +717,6 @@ void ArchMemory::cowPageCopy([[maybe_unused]]uint64 virt_addresss, [[maybe_unuse
 
     if(!(mapping.pml4 && mapping.pml4[mapping.pml4i].present))
         return;
-
-    //----------------------ZeroDeduplication----------------------------
-    if(mapping.pt && mapping.pt[mapping.pti].page_ppn == PageManager::instance()->zeroPPN)
-    {
-        debug(A_MEMORY, "\n COW detected ZeroPPN! \n");
-
-
-        debug(A_MEMORY, "\n COW ZeroPPN else! \n");
-        mapping.pt[mapping.pti].present = 0;
-        mapping.pt[mapping.pti].page_ppn = PageManager::instance()->allocPPN();
-        mapping.pt[mapping.pti].cow = 0;
-        mapping.pt[mapping.pti].writeable = 1;
-        mapping.pt[mapping.pti].present = 1;
-
-        PageManager::instance()->zero_cnt--;
-
-        return;
-    }
 
 //----------------------------------------PML4--------------------------------------------------------------------------
     if(mapping.pml4 && mapping.pml4[mapping.pml4i].present && mapping.pml4[mapping.pml4i].cow)

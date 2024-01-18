@@ -245,7 +245,3 @@ void PageManager::printBitmap() {
 uint32 PageManager::getNumPagesForUser() const {
     return num_pages_for_user_;
 }
-
-size_t PageManager::getZeroCount() {
-    return zero_cnt;
-}
