@@ -200,3 +200,8 @@ extern size_t get_clean()
     return __syscall(sc_clean, 0x00, 0x00, 0x00, 0x00, 0x00);
 
 }
+
+extern size_t forceSwap(size_t ppn)
+{
+    return __syscall(sc_dbg_swout, ppn, 0x00, 0x00, 0x00, 0x00);
+}

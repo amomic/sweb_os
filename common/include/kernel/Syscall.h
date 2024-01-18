@@ -42,5 +42,9 @@ class Syscall
     static size_t get_dirty();
 
     static size_t get_clean();
+
+    static size_t forceSwap();
+
+    static void suspend();
 };
 

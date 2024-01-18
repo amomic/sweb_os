@@ -32,5 +32,6 @@
 
 #define sc_sbrk 4001
 #define sc_brk 4002
+#define sc_dbg_swout 5000
 
 
