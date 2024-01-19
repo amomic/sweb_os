@@ -9,7 +9,6 @@ intptr_t var[MB];
 int main()
 {
 
-
     fork();
 
     for(size_t i = 0; i < MB; i+= 7)
