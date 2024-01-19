@@ -54,7 +54,7 @@ class ArchMemory
      * @return True if successful, false otherwise (the PT entry already exists)
      */
     [[nodiscard]] bool mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access);
-
+    //[[nodiscard]] bool mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access, uint64 write_access);
     /**
      * Removes the mapping to a virtual_page by marking its PTE entry as non-valid and frees the underlying physical page.
      * Potentially de-allocates the upper paging-hierarchy tables, depending on their occupancy.
