@@ -27,8 +27,6 @@ IPT::IPT() : ipt_lock_("ipt_lock_") {
     debug(A_MEMORY, "IPT initialisation done \n");
 }
 
-
-
 [[maybe_unused]] void IPT::addReference(size_t ppn, ArchMemory *memory, size_t vpn, PageType type, [[maybe_unused]] size_t dirty)
 {
   //  assert(IPT::instance()->ipt_lock_.isHeldBy(currentThread) && "IPT lock!");
