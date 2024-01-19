@@ -2,7 +2,7 @@
 #include "stdio.h"
 #define MB 1024ULL * 1024ULL
 
-size_t global[10*MB];
+size_t var[10 * MB];
 
 int main()
 {
@@ -11,7 +11,7 @@ int main()
     {
         if(!(i % 4096))
         {
-            global[i] = i - 1;
+            var[i] = i - 1;
         }
     }
 

@@ -2,23 +2,23 @@
 #include "stdio.h"
 #include "assert.h"
 #include "unistd.h"
-#define SIZE ((500 * 1000)/sizeof(long))
+#define SIZE (1024ULL * 1024ULL)
 
-intptr_t global[10*SIZE];
+intptr_t var[10 * SIZE];
 
 int main()
 {
 
     for(size_t i = 0; i < 10*SIZE;i+= 1024)
     {
-        global[i] = (intptr_t)&global[i];
+        var[i] = (intptr_t)&var[i];
     }
 
 
     for(size_t i = 0; i < 10*SIZE; i+= 1024)
     {
-        printf(" global id is: %ld, and we got %ld\n", global[i], (intptr_t)&global[i] );
-        assert(global[i] == (intptr_t)&global[i]);
+        printf(" id is: %ld, and we got %ld\n", var[i], (intptr_t)&var[i] );
+        assert(var[i] == (intptr_t)&var[i]);
     }
 
     printf("SUCCESS\n");
