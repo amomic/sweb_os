@@ -25,6 +25,7 @@
 #include "Terminal.h"
 #include "outerrstream.h"
 #include "user_progs.h"
+#include "SwapThread.h"
 
 extern void* kernel_end_address;
 
@@ -121,8 +122,9 @@ extern "C" void startup()
     PageManager::instance()->zeroPPN = PageManager::instance()->allocPPN();
 */
 
-    kprintf("Now enabling Interrupts...\n");
+  kprintf("Now enabling Interrupts...\n");
   system_state = RUNNING;
+
 
   ArchInterrupts::enableInterrupts();
 

@@ -27,6 +27,7 @@ public:
     BDVirtualDevice *device_;
     size_t block_;
     size_t SwapOut(SwapRequest* request);
+    size_t SwapOutSpecific(size_t ppn);
 
     bool SwapIn(SwapRequest* request);
     ustl::vector <SwapRequest* > swap_request_map_;
@@ -51,6 +52,8 @@ public:
 
     void age();
 
+    void init_devices_amar();
+
 private:
     static SwapThread *instance_;
     bool reserveBlock(uint32 block, uint32 num);
@@ -58,6 +61,8 @@ private:
     size_t scPRA();
 
     size_t aging_PRA();
+
+
 };
 struct SwapRequest {
     size_t swap_type_;

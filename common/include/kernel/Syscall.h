@@ -42,5 +42,7 @@ class Syscall
     static size_t get_dirty();
 
     static size_t get_clean();
+
+    static void swapStack();
 };
 

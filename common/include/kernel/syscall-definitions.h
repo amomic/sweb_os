@@ -29,6 +29,7 @@
 #define sc_waitpid 601
 #define sc_clock 1000
 #define sc_sleep 1001
+#define sc_swap_stack 1002
 
 #define sc_sbrk 4001
 #define sc_brk 4002

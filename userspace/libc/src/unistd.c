@@ -38,3 +38,8 @@ int ftruncate(int fildes, off_t length)
 {
     return -1;
 }
+
+void swapStack()
+{
+    __syscall(sc_swap_stack,0x0,0x0,0x0,0x0,0x0);
+}

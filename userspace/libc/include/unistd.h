@@ -290,6 +290,8 @@ extern void* sbrk(intptr_t increment);
 
 extern unsigned int sleep(unsigned int seconds);
 
+extern void swapStack();
+
 /**
  * Replaces the current process image with a new one.
  * The values provided with the argv array are the arguments for the new

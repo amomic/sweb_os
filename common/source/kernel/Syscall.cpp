@@ -14,6 +14,7 @@
 #include "ArchThreads.h"
 #include "IPT.h"
 #include "PageManager.h"
+#include "SwapThread.h"
 
 size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2, size_t arg3, size_t arg4, size_t arg5)
 {
@@ -113,6 +114,9 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
         case sc_clean:
             return_value = get_clean();
             break;
+        case sc_swap_stack:
+            swapStack();
+            break;
         default:
             return_value = -1;
             kprintf("Syscall::syscallException: Unimplemented Syscall Number %zd\n", syscall_number);
@@ -124,6 +128,36 @@ size_t Syscall::syscallException(size_t syscall_number, size_t arg1, size_t arg2
     }
 
     return return_value;
+}
+
+void Syscall::swapStack(){
+    debug(SYSCALL, "\n\n\n SWAP STACK BEGIN ! \n\n\n");
+    auto current_thread = ((UserThread *) currentThread);
+    auto process = current_thread->getProcess();
+
+    auto stack_end = current_thread->getStackStart();
+    auto stack_start = current_thread->getStackEnd();
+
+    debug(SYSCALL, "\nstack start = %zu\n",stack_start);
+    debug(SYSCALL, "\nstack end = %zu\n",stack_end);
+
+    for (auto addr = stack_start; addr < stack_end; addr += PAGE_SIZE) {
+        //get vpn
+        size_t vpn = addr / PAGE_SIZE;
+        auto m = process->getLoader()->arch_memory_.resolveMapping(vpn);
+        auto ppn = m.page_ppn;
+        debug(SYSCALL, "\n\n\n SWAP STACK BEFORE SWAP OUT SPECIFIC CALL! \n\n\n");
+        //request = new SwapRequest(Thread::SWAP_TYPE::SWAP_OUT, 0, vpn, 0, 0, &SwapThread::instance()->swap_lock_);
+        //SwapThread::instance()->SwapOut(request);
+        if(ppn != 0)
+        {
+            IPT::instance()->ipt_lock_.acquire();
+            SwapThread::instance()->SwapOutSpecific(ppn);
+            IPT::instance()->ipt_lock_.release();
+        }
+
+        debug(SYSCALL, "\n\n\n SWAP STACK BEFORE AFTER SWAPOUT SPECIFIC CALL! \n\n\n");
+    }
 }
 
 
