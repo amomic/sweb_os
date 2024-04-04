@@ -38,6 +38,7 @@ Thread::Thread(FileSystemInfo *working_dir, ustl::string name, Thread::TYPE type
   ArchThreads::createKernelRegisters(kernel_registers_, (void*) (type == Thread::USER_THREAD ? 0 : threadStartHack), getKernelStackStartPointer());
   kernel_stack_[2047] = STACK_CANARY;
   kernel_stack_[0] = STACK_CANARY;
+  type_ = type;
 }
 
 Thread::~Thread()
@@ -190,4 +191,9 @@ void Thread::setState(ThreadState new_state)
   assert(!((new_state == Sleeping) && (currentThread != this)) && "Setting other threads to sleep is not thread-safe");
 
   state_ = new_state;
+}
+
+void Thread::setTID(size_t tid)
+{
+    tid_ = tid;
 }

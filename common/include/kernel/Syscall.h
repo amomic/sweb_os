@@ -18,5 +18,29 @@ class Syscall
 
     static size_t createprocess(size_t path, size_t sleep);
     static void trace();
+    static size_t pthread_create(pointer thread, pointer attr, void *(*start_routine)(void *), pointer arg,pointer wrapper);
+    static size_t pthread_join(size_t thread, size_t return_val);
+    static size_t pthread_detach(size_t thread);
+
+    static void pthread_exit(void *value);
+
+    static size_t pthread_cancel(size_t thread_id);
+    static size_t pthread_setcancelstate(size_t state, size_t *oldstate);
+    static size_t pthread_setcanceltype(size_t type, size_t *oldtype);
+
+    static size_t fork();
+
+    static size_t execv(char* path, char* const* argv);
+    static pid_t waitpid(pid_t pid, int *status, int options);
+
+    static size_t clock(void);
+    static size_t thread_sleep(size_t seconds);
+
+    static size_t brk(size_t end_data_segment);
+    static size_t sbrk(size_t increment);
+
+    static size_t get_dirty();
+
+    static size_t get_clean();
 };
 

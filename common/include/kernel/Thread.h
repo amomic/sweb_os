@@ -15,7 +15,7 @@ class Loader;
 class Terminal;
 class Mutex;
 class Lock;
-
+class UserProcess;
 extern Thread* currentThread;
 
 class Thread
@@ -26,6 +26,9 @@ class Thread
     static const char* threadStatePrintable[3];
 
     enum TYPE { KERNEL_THREAD, USER_THREAD };
+    enum SWAP_TYPE {
+        SWAP_IN= 1, SWAP_OUT = 0
+    };
 
     /**
      * Constructor for a new thread with a given working directory, name and type
@@ -77,7 +80,9 @@ class Thread
      * Tells the scheduler if this thread is ready for scheduling
      * @return true if ready for scheduling
      */
-    bool schedulable();
+    virtual bool schedulable() ;
+
+    void setTID(size_t tid);
   
   
     uint32 kernel_stack_[2048];
@@ -111,6 +116,10 @@ class Thread
      */
     Lock* holding_lock_list_;
 
+    ThreadState getState() const;
+
+    TYPE type_;
+
   private:
     Thread(Thread const &src);
     Thread &operator=(Thread const &src);
@@ -122,7 +131,6 @@ class Thread
     Terminal* my_terminal_;
 
   protected:
-    ThreadState getState() const;
 
     FileSystemInfo* working_dir_;
 

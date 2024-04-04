@@ -7,6 +7,8 @@
 #define PAGE_DIR_ENTRIES 512
 #define PAGE_TABLE_ENTRIES 512
 #define PAGE_SIZE 4096
+#define PAGE_MAX 1
+#define STACK_POS 0x00007F0000000000ULL
 
 #define PAGE_INDEX_OFFSET_BITS 12
 
@@ -31,7 +33,10 @@ typedef struct
   uint64 ignored_2                 :4;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :11;
+  uint64 ignored_1                 :9;
+    uint64 swapped                    :1;
+
+  uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__)) PageMapLevel4Entry;
 
@@ -50,7 +55,10 @@ struct PageDirPointerTablePageDirEntry
   uint64 ignored_2                 :4;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :11;
+  uint64 ignored_1                 :9;
+    uint64 swapped                    :1;
+
+  uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
 
@@ -72,7 +80,10 @@ struct PageDirPointerTablePageEntry
   uint64 reserved_2                :17; // must be 0
   uint64 page_ppn                  :10;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :11;
+  uint64 ignored_1                 :9;
+  uint64 swapped                    :1;
+
+  uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
 
@@ -97,7 +108,9 @@ struct PageDirPageTableEntry
   uint64 ignored_2                 :4;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :11;
+  uint64 ignored_1                 :9;
+  uint64 swapped                    :1;
+  uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
 
@@ -119,7 +132,9 @@ struct PageDirPageEntry
   uint64 reserved_2                :8; // must be 0
   uint64 page_ppn                  :19;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :11;
+  uint64 ignored_1                 :9;
+  uint64 swapped                    :1;
+  uint64 cow                       :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__));
 
@@ -145,7 +160,9 @@ typedef struct
   uint64 ignored_2                 :3;
   uint64 page_ppn                  :28;
   uint64 reserved_1                :12; // must be 0
-  uint64 ignored_1                 :11;
+  uint64 ignored_1                 :9;
+  uint64 cow                       :1;
+  uint64 swapped                   :1;
   uint64 execution_disabled        :1;
 } __attribute__((__packed__)) PageTableEntry;
 

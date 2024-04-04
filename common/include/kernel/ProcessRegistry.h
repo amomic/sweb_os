@@ -3,6 +3,10 @@
 #include "Thread.h"
 #include "Mutex.h"
 #include "Condition.h"
+#include "UserProcess.h"
+#include <uset.h>
+#include <ustl/umap.h>
+#include <ulist.h>
 
 class ProcessRegistry : public Thread
 {
@@ -37,13 +41,20 @@ class ProcessRegistry : public Thread
 
     static ProcessRegistry* instance();
     void createProcess(const char* path);
+    size_t fork();
+    Mutex process_lock_;
 
-  private:
+    ustl::map<size_t, UserProcess*> process_map_;
+    ustl::map<size_t, size_t> process_retval_map_;
+    void updateExitCode(size_t code);
+    size_t process_count_{0};
+private:
 
     char const **progs_;
     uint32 progs_running_;
     Mutex counter_lock_;
     Condition all_processes_killed_;
     static ProcessRegistry* instance_;
+
 };
 

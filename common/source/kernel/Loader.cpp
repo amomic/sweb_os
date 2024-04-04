@@ -9,9 +9,28 @@
 #include "File.h"
 #include "FileDescriptor.h"
 #include "Scheduler.h"
+#include "IPT.h"
 
-Loader::Loader(ssize_t fd) : fd_(fd), hdr_(0), phdrs_(), program_binary_lock_("Loader::program_binary_lock_"), userspace_debug_info_(0)
+Loader::Loader(ssize_t fd) :
+        heap_mutex_("Heap lock"),
+        fd_(fd), hdr_(0), phdrs_(), program_binary_lock_("Loader::program_binary_lock_"), userspace_debug_info_(0)
 {
+}
+
+Loader::Loader(Loader& loader, ssize_t fd, UserProcess* child) :
+
+        arch_memory_(loader.arch_memory_, child),
+        heap_mutex_("Heap lock"),
+        fd_(fd),
+        hdr_(0),
+        phdrs_(),
+        program_binary_lock_("Loader::program_binary_lock_"),
+
+        userspace_debug_info_(0)
+{
+
+
+    debug(LOADER, "In loader copy constructor!\n");
 }
 
 Loader::~Loader()
@@ -22,15 +41,18 @@ Loader::~Loader()
   hdr_ = nullptr;
 }
 
-void Loader::loadPage(pointer virtual_address)
+void Loader::loadPage(pointer virtual_address, ustl::map<size_t, bool> *pMap)
 {
   debug(LOADER, "Loader:loadPage: Request to load the page for address %p.\n", (void*)virtual_address);
   const pointer virt_page_start_addr = virtual_address & ~(PAGE_SIZE - 1);
   const pointer virt_page_end_addr = virt_page_start_addr + PAGE_SIZE;
   bool found_page_content = false;
   // get a new page for the mapping
-  size_t ppn = PageManager::instance()->allocPPN();
+    debug(SYSCALL, "here\n");
 
+  size_t ppn = pMap->back().first;
+
+    debug(SYSCALL, "14\n");
   program_binary_lock_.acquire();
 
   // Iterate through all sections and load the ones intersecting into the page.
@@ -39,7 +61,7 @@ void Loader::loadPage(pointer virtual_address)
     if((*it).p_vaddr < virt_page_end_addr)
     {
       if((*it).p_vaddr + (*it).p_filesz > virt_page_start_addr)
-      {
+      { debug(SYSCALL, "15\n");
         const pointer  virt_start_addr = ustl::max(virt_page_start_addr, (*it).p_vaddr);
         const size_t   virt_offs_on_page = virt_start_addr - virt_page_start_addr;
         const l_off_t  bin_start_addr = (*it).p_offset + (virt_start_addr - (*it).p_vaddr);
@@ -49,7 +71,14 @@ void Loader::loadPage(pointer virtual_address)
         if(readFromBinary((char *)ArchMemory::getIdentAddressOfPPN(ppn) + virt_offs_on_page, bin_start_addr, bytes_to_load))
         {
           program_binary_lock_.release();
-          PageManager::instance()->freePPN(ppn);
+            for(auto page : *pMap)
+            {
+                if(!pMap->empty() && page.second == false) {
+                    page.second = true;
+                    debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+                    PageManager::instance()->freePPN(page.first);
+                }
+            }
           debug(LOADER, "ERROR! Some parts of the content could not be loaded from the binary.\n");
           Syscall::exit(999);
         }
@@ -57,6 +86,7 @@ void Loader::loadPage(pointer virtual_address)
       }
       else if((*it).p_vaddr + (*it).p_memsz > virt_page_start_addr)
       {
+          debug(SYSCALL, "16\n");
         found_page_content = true;
       }
     }
@@ -65,18 +95,50 @@ void Loader::loadPage(pointer virtual_address)
 
   if(!found_page_content)
   {
-    PageManager::instance()->freePPN(ppn);
+      for(auto page : *pMap)
+      {
+          if(!pMap->empty() && page.second == false) {
+              page.second = true;
+              debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+              PageManager::instance()->freePPN(page.first);
+          }
+      }
     debug(LOADER, "Loader::loadPage: ERROR! No section refers to the given address.\n");
     Syscall::exit(666);
   }
 
-  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, ppn, true);
+    debug(SYSCALL, "17\n");
+  IPT::instance()->ipt_lock_.acquire();
+  arch_memory_.process_->arch_mem_lock_.acquire();
+  bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, pMap, true);
+  // bool page_mapped = arch_memory_.mapPage(virt_page_start_addr / PAGE_SIZE, pMap, true, true);
+    arch_memory_.process_->arch_mem_lock_.release();
+
+    IPT::instance()->ipt_lock_.release();
+
   if (!page_mapped)
   {
     debug(LOADER, "Loader::loadPage: The page has been mapped by someone else.\n");
-    PageManager::instance()->freePPN(ppn);
+
   }
+
+
   debug(LOADER, "Loader::loadPage: Load request for address %p has been successfully finished.\n", (void*)virtual_address);
+    if(arch_memory_.process_->arch_mem_lock_.isHeldBy(currentThread))
+        arch_memory_.process_->arch_mem_lock_.release();
+    if(currentThread->loader_->heap_mutex_.isHeldBy(currentThread))
+        currentThread->loader_->heap_mutex_.release();
+    if(IPT::instance()->ipt_lock_.isHeldBy(currentThread))
+        IPT::instance()->ipt_lock_.release();
+
+    for(auto page : *pMap)
+    {
+        if(!pMap->empty() && page.second == false) {
+            page.second = true;
+            debug(SWAP_THREAD, "FREE PPN %zu\n", page.first);
+            PageManager::instance()->freePPN(page.first);
+        }
+    }
 }
 
 bool Loader::readFromBinary (char* buffer, l_off_t position, size_t length)
@@ -296,5 +358,17 @@ bool Loader::prepareHeaders()
       }
     }
   }
+    size_t offset = 0;
+    size_t address = 0;
+    for(auto iter = phdrs_.begin(); iter != phdrs_.end(); iter++)
+    {
+        if(iter->p_vaddr > address)
+            address = iter->p_vaddr;
+        if(iter->p_memsz > offset)
+            offset = iter->p_memsz;
+    }
+
+    start_break_ = address+offset;
+    current_break_ = start_break_;
   return phdrs_.size() > 0;
 }

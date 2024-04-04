@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "pthread.h"
 #include "types.h"
 
 #ifdef __cplusplus
@@ -81,7 +82,12 @@ extern void *calloc(size_t nmemb, size_t size);
 
 extern void *realloc(void *ptr, size_t size);
 
+extern void checkInitAndLock(pthread_spinlock_t *spinlock);
+
 extern void free(void *ptr);
+
+extern size_t get_dirty();
+extern size_t get_clean();
 
 #ifdef __cplusplus
 }

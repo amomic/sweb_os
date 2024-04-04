@@ -3,6 +3,9 @@
 #include "types.h"
 #include "offsets.h"
 #include "paging-definitions.h"
+#include "Mutex.h"
+#include "umap.h"
+#include"IPTEntry.h"
 
 struct ArchMemoryMapping
 {
@@ -32,7 +35,14 @@ class ArchMemory
     ArchMemory();
     ~ArchMemory();
 
+    ArchMemory(ArchMemory &parent, UserProcess* child);
+    UserProcess* process_;
+
     uint64 page_map_level_4_;
+    uint64 pdpt_;
+    uint64 pd_, pt_, end_level_;
+
+    bool first = true;
     static constexpr size_t RESERVED_START = 0xFFFFFFFF80000ULL;
     static constexpr size_t RESERVED_END = 0xFFFFFFFFC0000ULL;
 
@@ -43,15 +53,15 @@ class ArchMemory
      * @param user_access PTE flag indicating whether the virtual page shall be accessible by threads in user-mode
      * @return True if successful, false otherwise (the PT entry already exists)
      */
-    [[nodiscard]] bool mapPage(uint64 virtual_page, uint64 physical_page, uint64 user_access);
-
+    [[nodiscard]] bool mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access);
+    //[[nodiscard]] bool mapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages, uint64 user_access, uint64 write_access);
     /**
      * Removes the mapping to a virtual_page by marking its PTE entry as non-valid and frees the underlying physical page.
      * Potentially de-allocates the upper paging-hierarchy tables, depending on their occupancy.
      * @param virtual_page The virtual page which shall be unmapped
      * @return Currently always returns true
      */
-    bool unmapPage(uint64 virtual_page);
+    bool unmapPage(uint64 virtual_page, ustl::map<size_t, bool> *alloc_pages);
 
     /**
      * Takes a physical page number (PPN) and returns a virtual address that can be used to access given physical page.
@@ -95,10 +105,16 @@ class ArchMemory
     static PageMapLevel4Entry* getRootOfKernelPagingStructure();
 
     /// Prevents accidental copying/assignment, can be implemented if needed
-    ArchMemory(ArchMemory const &src) = delete;
+    //ArchMemory(ArchMemory const &src) = delete;
     ArchMemory &operator=(ArchMemory const &src) = delete;
 
-  private:
+    bool isCowSet(uint64 virt_address);
+    void cowPageCopy(uint64 virt_address, ustl::map<size_t, bool> *alloc_pages , bool page_copy = true);
+    void releasearchmemLocks();
+
+    void updateArchMem();
+
+private:
     /**
      * Adds a PML4Entry, PDPTEntry, PDEntry or PTEntry to the given PML4, PDPT, PD or PT respectively.
      * (In other words, adds the reference to a new page table to a given page directory, for example.)
@@ -122,4 +138,7 @@ class ArchMemory
      * @return True if the table map_ptr is full of zeroes and thus able to be freed.
      */
     template<typename T> static bool checkAndRemove(pointer map_ptr, uint64 index);
+
+    uint64 getPML4();
+
 };

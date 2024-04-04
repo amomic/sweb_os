@@ -13,6 +13,9 @@ class Loader
 {
   public:
     Loader(ssize_t fd);
+
+    Loader(Loader &loader, ssize_t fd, UserProcess* child);
+
     ~Loader();
 
     /**
@@ -26,15 +29,20 @@ class Loader
      * Gets a free physical page, copies the contents of the binary to it, and then maps it.
      * @param virtual_address virtual address where to find the page to load
      */
-    void loadPage(pointer virtual_address);
+    void loadPage(pointer virtual_address, ustl::map<size_t, bool> *pMap);
 
     Stabs2DebugInfo const* getDebugInfos() const;
 
     void* getEntryFunction() const;
 
     ArchMemory arch_memory_;
+    Mutex heap_mutex_;
+    ustl::vector<size_t> vpns_of_heap_;
 
-  private:
+    size_t start_break_;
+    size_t current_break_;
+
+private:
 
     /**
      *reads ELF-headers from the executable
@@ -63,5 +71,6 @@ class Loader
 
     Stabs2DebugInfo *userspace_debug_info_;
 
+    size_t getHeapStart();
 };
 

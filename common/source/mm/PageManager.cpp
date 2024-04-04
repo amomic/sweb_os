@@ -3,13 +3,15 @@
 #include "offsets.h"
 #include "paging-definitions.h"
 #include "ArchCommon.h"
+#include "Thread.h"
 #include "ArchMemory.h"
+#include "UserProcess.h"
 #include "kprintf.h"
 #include "Scheduler.h"
 #include "KernelMemoryManager.h"
 #include "assert.h"
 #include "Bitmap.h"
-
+#include "SwapThread.h"
 PageManager pm;
 
 PageManager* PageManager::instance_ = nullptr;
@@ -21,7 +23,8 @@ PageManager* PageManager::instance()
   return instance_;
 }
 
-PageManager::PageManager() : lock_("PageManager::lock_")
+PageManager::PageManager() : cow_ref_map_lock("cow_ref_map_lock"),
+                             lock_("PageManager::lock_")
 {
   assert(!instance_);
   instance_ = this;
@@ -193,7 +196,7 @@ uint32 PageManager::allocPPN(uint32 page_size)
 {
   uint32 p;
   uint32 found = 0;
-
+    //debug(SYSCALL, "now\n");
   assert((page_size % PAGE_SIZE) == 0);
 
   lock_.acquire();
@@ -205,14 +208,20 @@ uint32 PageManager::allocPPN(uint32 page_size)
     if (reservePages(p, page_size / PAGE_SIZE))
       found = p;
   }
+    //debug(SYSCALL, "now1\n");
   while ((lowest_unreserved_page_ < number_of_pages_) && page_usage_table_->getBit(lowest_unreserved_page_))
     ++lowest_unreserved_page_;
 
   lock_.release();
 
+    //debug(SYSCALL, "now2\n");
   if (found == 0)
   {
-    assert(false && "PageManager::allocPPN: Out of memory / No more free physical pages");
+     // debug(SYSCALL, "now3\n");
+     found = SwapThread::instance()->addCond(found);
+     // debug(SYSCALL, "now4\n");
+      memset((void*)ArchMemory::getIdentAddressOfPPN(found), 0, page_size);
+      return found;
   }
 
   const char* page_ident_addr = (const char*)ArchMemory::getIdentAddressOfPPN(found);
@@ -242,8 +251,17 @@ void PageManager::freePPN(uint32 page_number, uint32 page_size)
     lowest_unreserved_page_ = page_number;
   for (uint32 p = page_number; p < (page_number + page_size / PAGE_SIZE); ++p)
   {
-    assert(page_usage_table_->getBit(p) && "Double free PPN");
-    page_usage_table_->unsetBit(p);
+     if(!page_usage_table_->getBit(p))
+     {
+         continue;
+     }
+     else
+     {
+         assert(page_usage_table_->getBit(p) && "Double free PPN");
+         page_usage_table_->unsetBit(p);
+     }
+
+
   }
   lock_.release();
 }
@@ -257,3 +275,10 @@ uint32 PageManager::getNumPagesForUser() const
 {
   return num_pages_for_user_;
 }
+
+/*
+ size_t PageManager::getZeroCount() {
+    return zero_cnt;
+}
+
+ */
